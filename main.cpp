@@ -180,7 +180,7 @@ void begin() {
     }
     else {
       // Listen with a backlog of 1
-      if (listen(sockfd, 0) < 0) {
+      if (listen(sockfd, 8) < 0) {
         close(sockfd);
         throw std::runtime_error{"failed to listen on socket"};
       }
