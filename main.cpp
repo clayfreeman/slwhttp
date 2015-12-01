@@ -163,15 +163,15 @@ void begin() {
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family      = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port        = htons(_port);
 
     // Setup the listening socket
     int sockfd = socket(AF_INET, SOCK_STREAM, 0), yes = 1;
     if (sockfd < 0)
       throw std::runtime_error{"failed to create socket"};
-    // if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
-    //   throw std::runtime_error{"failed to set socket option"};
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
+      throw std::runtime_error{"failed to set socket option"};
     // Attempt to bind to the listen address
     if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
       close(sockfd);
