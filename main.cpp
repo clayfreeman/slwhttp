@@ -46,7 +46,7 @@ inline bool file        (const std::string& path);
 inline void lowercase   (std::string& str);
 void        print_help  (bool should_exit = true);
 inline bool readable    (const std::string& path);
-bool        ready       ();
+void        ready       ();
 bool        ready       (int fd);
 std::string real_path   (const std::string& path);
 
@@ -386,7 +386,7 @@ inline bool readable(const std::string& path) {
  * Calls select(...) for listening socket and all clients in order to stall for
  * incoming connections or data
  */
-bool ready() {
+void ready() {
   // Setup storage to determine if anything is readable
   fd_set rfds;
   FD_ZERO(&rfds);
