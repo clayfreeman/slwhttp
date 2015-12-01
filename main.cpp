@@ -18,6 +18,7 @@
 #include <cstdio>      // perror(...)
 #include <cstdlib>     // free(...), realpath(...)
 #include <iostream>    // std::cerr, std::endl
+#include <pwd.h>       // getpwnam(...)
 #include <stdexcept>   // std::runtime_error
 #include <string>      // std::string
 #include <sys/types.h> // stat(...)
@@ -148,7 +149,16 @@ int main(int argc, const char* argv[]) {
  */
 void begin() {
   // Change directory to the htdocs path
-  chdir(_htdocs.c_str());
+  if (chdir(_htdocs.c_str()) != 0)
+    throw std::runtime_error{"failed to set working directory"};
+
+  // Set the user and group ID to "nobody"
+  struct passwd* entry = getpwnam("nobody");
+  if (entry == NULL)
+    throw std::runtime_error{"could not find UID/GID for user \"nobody\""};
+  if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
+    throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
+      "(running as root?)"};
 
   while (true) {
     sleep(1);
