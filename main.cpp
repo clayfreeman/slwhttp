@@ -194,20 +194,20 @@ void begin() {
 
   // Loop indefinitely to accept and process clients
   while (true) {
-    // debug("loop");
+    debug("loop");
 
     // Setup storage to determine if a connection is incoming
     fd_set rfds;
     FD_ZERO(&rfds);
     FD_SET(sockfd, &rfds);
-    struct timeval timeout{1, 0};
+    struct timeval timeout{3, 0};
     // debug("select(...)");
-    // Use select with a timeout of 0 to determine status
+    // Use select with a timeout of 1 to determine status
     select(sockfd + 1, &rfds, NULL, NULL, &timeout);
 
     // If the listening socket is marked as read available, client incoming
     if (FD_ISSET(sockfd, &rfds)) {
-      // debug("incoming client");
+      debug("incoming client");
       int clifd = accept(sockfd, NULL, NULL);
       // Check if the client descriptor is valid
       if (clifd >= 0) {
