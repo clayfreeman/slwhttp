@@ -200,41 +200,25 @@ void begin() {
   while (true) {
     debug("loop");
 
-    // Setup storage to determine if a connection is incoming
-    fd_set rfds;
-    FD_ZERO(&rfds);
-    FD_SET(sockfd, &rfds);
-    struct timeval timeout{3, 0};
-    // debug("select(...)");
-    // Use select with a timeout of 1 to determine status
-    if (select(sockfd + 1, &rfds, NULL, NULL, &timeout) < 0 && _debug == true)
-      perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
+    int clifd = accept(sockfd, NULL, NULL);
+    // Check if the client descriptor is valid
+    if (clifd >= 0) {
+      debug("accepted client");
 
-    // If the listening socket is marked as read available, client incoming
-    if (FD_ISSET(sockfd, &rfds)) {
-      debug("incoming client");
-      int clifd = accept(sockfd, NULL, NULL);
-      // Check if the client descriptor is valid
-      if (clifd >= 0) {
-        debug("accepted client");
+      // We've got a new client - process its request
+      std::string request{};
+      // Prepare a buffer for the incoming data
+      char* buffer = (char*)calloc(8192, sizeof(char));
+      // Read up to (8K - 1) bytes from the file descriptor to ensure a null
+      // character at the end to prevent overflow
+      read(clifd, buffer, 8191);
+      // Copy the C-String into a std::string
+      request += buffer;
+      // Free the storage for the buffer ...
+      free(buffer);
 
-        // We've got a new client - process its request
-        std::string request{};
-        // Prepare a buffer for the incoming data
-        char* buffer = (char*)calloc(8192, sizeof(char));
-        // Read up to (8K - 1) bytes from the file descriptor to ensure a null
-        // character at the end to prevent overflow
-        read(clifd, buffer, 8191);
-        // Copy the C-String into a std::string
-        request += buffer;
-        // Free the storage for the buffer ...
-        free(buffer);
-
-        close(clifd);
-        debug("incoming request:\n\n" + request);
-      }
-      else if (_debug == true)
-        perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
+      close(clifd);
+      debug("incoming request:\n\n" + request);
     }
   }
 }
