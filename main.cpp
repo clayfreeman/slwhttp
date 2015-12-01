@@ -39,19 +39,21 @@
 #define INDEX "/index.html"
 
 // Declare function prototypes
-void        begin          ();
-bool        check_jail     (std::string path);
-inline void debug          (const std::string& str);
-inline bool directory      (const std::string& path);
-inline bool executable     (const std::string& path);
-inline bool file           (const std::string& path);
-inline void lowercase      (std::string& str);
-void        print_help     (bool should_exit = true);
-void        process_request(const int& fd, const std::string& request);
-inline bool readable       (const std::string& path);
-void        ready          ();
-bool        ready          (int fd);
-std::string real_path      (const std::string& path);
+void                     begin          ();
+bool                     check_jail     (std::string path);
+inline void              debug          (const std::string& str);
+inline bool              directory      (const std::string& path);
+inline bool              executable     (const std::string& path);
+std::vector<std::string> explode        (const std::string& s,
+                                         const std::string& d);
+inline bool              file           (const std::string& path);
+inline void              lowercase      (std::string& str);
+void                     print_help     (bool should_exit = true);
+void                     process_request(const int& fd);
+inline bool              readable       (const std::string& path);
+void                     ready          ();
+bool                     ready          (int fd);
+std::string              real_path      (const std::string& path);
 
 // Declare storage for global configuration state
 bool            _debug = false;
@@ -232,23 +234,9 @@ void begin() {
     // Check each client for available data
     for (const int& clifd : _clients) {
       // Check if data was sent by the client
-      if (ready(clifd)) {
-        // We've got a new client - process its request
-        std::string request{};
-
-        // Prepare a buffer for the incoming data
-        char* buffer = (char*)calloc(8192, sizeof(char));
-        // Read up to (8K - 1) bytes from the file descriptor to ensure a null
-        // character at the end to prevent overflow
-        read(clifd, buffer, 8191);
-        // Copy the C-String into a std::string
-        request += buffer;
-        // Free the storage for the buffer ...
-        free(buffer);
-
+      if (ready(clifd))
         // Process the request
-        std::thread(process_request, clifd, request).detach();
-      }
+        std::thread(process_request, clifd).detach();
     }
     lock.unlock();
   }
@@ -318,6 +306,30 @@ inline bool executable(const std::string& path) {
 }
 
 /**
+ * @brief Explode
+ *
+ * Explodes a std::string by a delimiter to a std::vector of std::string
+ *
+ * @param s The std::string to explode
+ * @param d The delimiter to explode the std::string
+ *
+ * @return std::vector of std::string
+ */
+std::vector<std::string> explode(const std::string& s, const std::string& d) {
+  size_t lpos = 0;
+  std::vector<std::string> result;
+
+  for (size_t cpos = 0; (cpos = s.find(d, lpos)) != std::string::npos;
+      lpos = cpos + d.length())
+    // Add each item separated by a delimiter
+    result.push_back(s.substr(lpos, cpos - lpos));
+  // Add the last substr with no delimiter
+  result.push_back(s.substr(lpos));
+
+  return result;
+}
+
+/**
  * @brief File
  *
  * Determines if a path is a file
@@ -382,8 +394,40 @@ void print_help(bool should_exit) {
  *                  connected client
  *
  */
-void process_request(const int& fd, const std::string& request) {
+void process_request(const int& fd) {
+  // Prepare storage for the request headers
+  std::string request{};
+
+  // Loop until empty line as per HTTP protocol
+  while (request.find("\r\n\r\n") == std::string::npos) {
+    // Prepare a buffer for the incoming data
+    char* buffer = (char*)calloc(8192, sizeof(char));
+    // Read up to (8K - 1) bytes from the file descriptor to ensure a null
+    // character at the end to prevent overflow
+    read(clifd, buffer, 8191);
+    // Copy the C-String into a std::string
+    request += buffer;
+    // Free the storage for the buffer ...
+    free(buffer);
+  }
+
+  // Log incoming request to debug
   debug("incoming request:\n\n" + request);
+  // Create vector that holds each line
+  std::vector<std::string> lines = explode(request, "\r\n");
+  // Check for GET request
+  for (std::string line : lines) {
+    // Explode the line into words
+    std::vector<std::string> words = explode(line, " ");
+    lowercase(words.front());
+    // Check for "GET" request
+    if (words.size() > 1 && words.front() == "get") {
+      // Extract the requested path
+      std::string path = words[1];
+      debug("GET " + path);
+    }
+  }
+
   // Lock the mutex while modifying _clients
   std::unique_lock<std::mutex> lock(_mutex);
   // Close the file descriptor
