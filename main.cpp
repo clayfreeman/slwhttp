@@ -226,7 +226,7 @@ void begin() {
         FD_ZERO(&rfds);
         FD_SET(clifd, &rfds);
         if (select(clifd + 1, &rfds, NULL, NULL, &timeout) < 0 &&
-            __debug == true)
+            _debug == true)
           perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
 
         // Check if data was sent by the client
