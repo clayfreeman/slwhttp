@@ -385,7 +385,7 @@ void print_help(bool should_exit) {
 void process_request(const int& fd, const std::string& request) {
   debug("incoming request:\n\n" + request);
   // Lock the mutex while modifying _clients
-  std::unique_lock<mutex> lock(_mutex);
+  std::unique_lock<std::mutex> lock(_mutex);
   // Close the file descriptor
   close(fd);
   // Remove the file descriptor from the client set
