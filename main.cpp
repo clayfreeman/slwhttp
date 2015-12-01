@@ -404,7 +404,7 @@ void process_request(const int& fd) {
     char* buffer = (char*)calloc(8192, sizeof(char));
     // Read up to (8K - 1) bytes from the file descriptor to ensure a null
     // character at the end to prevent overflow
-    read(clifd, buffer, 8191);
+    read(fd, buffer, 8191);
     // Copy the C-String into a std::string
     request += buffer;
     // Free the storage for the buffer ...
