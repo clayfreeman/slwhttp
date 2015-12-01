@@ -199,13 +199,13 @@ void begin() {
     FD_ZERO(&rfds);
     FD_SET(sockfd, &rfds);
     struct timeval timeout{1, 0};
-    debug("select(...)");
+    // debug("select(...)");
     // Use select with a timeout of 0 to determine status
     select(sockfd + 1, &rfds, NULL, NULL, &timeout);
 
     // If the listening socket is marked as read available, client incoming
     if (FD_ISSET(sockfd, &rfds)) {
-      debug("incoming client");
+      // debug("incoming client");
       int clifd = accept(sockfd, NULL, NULL);
       // Check if the client descriptor is valid
       if (clifd >= 0) {
