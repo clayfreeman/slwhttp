@@ -155,7 +155,7 @@ int main(int argc, const char* argv[]) {
  */
 void begin() {
   // Store the listening socket's file descriptor
-  int sockfd = -1;
+  int sockfd = -1, yes = 1;
 
   // Wrap the listen logic in a block so that useless identifiers are freed
   {
@@ -167,7 +167,7 @@ void begin() {
     serv_addr.sin_port        = htons(_port);
 
     // Setup the listening socket
-    sockfd = socket(AF_INET, SOCK_STREAM, 0), yes = 1;
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
       throw std::runtime_error{"failed to create socket"};
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
