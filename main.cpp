@@ -168,6 +168,8 @@ void begin() {
 
     // Setup the listening socket
     int sockfd = socket(AF_INET, SOCK_STREAM, 0), yes = 1;
+    // Set nonblocking mode (to be safe, not needed)
+    fcntl(*this->sockfd, F_SETFL, O_NONBLOCK);
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
     // Attempt to bind to the listen address
     if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) != 0) {
