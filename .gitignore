@@ -1,6 +1,5 @@
 *.dSYM
 *.o
 *.so
-.Makefile-libs
 .Makefile-modsdir
 slwhttp
