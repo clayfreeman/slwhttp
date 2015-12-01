@@ -192,7 +192,7 @@ void begin() {
 
   // Loop indefinitely to accept and process clients
   while (true) {
-    debug("loop");
+    // debug("loop");
 
     // Setup storage to determine if a connection is incoming
     fd_set rfds;
