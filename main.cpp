@@ -168,19 +168,19 @@ void begin() {
 
     // Setup the listening socket
     int sockfd = socket(AF_INET, SOCK_STREAM, 0), yes = 1;
-    if (sockfd == -1)
+    if (sockfd < 0)
       throw std::runtime_error{"failed to create socket"};
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
       throw std::runtime_error{"failed to set socket option"};
     // Attempt to bind to the listen address
-    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1) {
+    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
       close(sockfd);
       throw std::runtime_error{"failed to bind to 0.0.0.0:" +
         std::to_string(_port)};
     }
     else {
       // Listen with a backlog of 1
-      if (listen(sockfd, 1) == -1) {
+      if (listen(sockfd, 0) < 0) {
         close(sockfd);
         throw std::runtime_error{"failed to listen on socket"};
       }
