@@ -56,7 +56,7 @@ std::set<int>    _clients = {};
 std::string       _htdocs = "";
 std::string         _path = "";
 int                 _port = 80;
-int               _sockfd = -1
+int               _sockfd = -1;
 
 // Declare classes
 class SandboxPath {
@@ -425,7 +425,7 @@ bool ready(int fd) {
   // Use select to determine status
   if (select(fd + 1, &rfds, NULL, NULL, &timeout) < 0)
     throw std::runtime_error{"could not select(" + std::to_string(fd) + ")"};
-  return FD_ISSET(fd);
+  return FD_ISSET(fd, &rfds);
 }
 
 /**
