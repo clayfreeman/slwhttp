@@ -4,27 +4,33 @@
  *
  * Lightweight executable that serves (read: dumps) static content from a
  * sandbox directory mimicking an extremely basic subset of the HTTP version
- * 1.1 protocol in a secure manner
+ * 1.0 protocol in a secure manner
  *
  * @author     Clay Freeman
  * @date       November 30, 2015
  */
 
-#include <algorithm>   // std::transform(...)
-#include <cassert>     // assert(...)
-#include <cctype>      // tolower(...)
-#include <cerrno>      // perror(...)
-#include <climits>     // realpath(...), PATH_MAX
-#include <cstdio>      // perror(...)
-#include <cstdlib>     // free(...), realpath(...)
-#include <iostream>    // std::cerr, std::endl
-#include <pwd.h>       // getpwnam(...)
-#include <stdexcept>   // std::runtime_error
-#include <string>      // std::string
-#include <sys/types.h> // stat(...)
-#include <sys/stat.h>  // stat(...)
-#include <unistd.h>    // access(...), stat(...)
-#include <vector>      // std::vector<...>
+#include <algorithm>    // std::transform(...)
+#include <arpa/inet.h>  // inet_addr(...)
+#include <cassert>      // assert(...)
+#include <cctype>       // tolower(...)
+#include <cerrno>       // perror(...)
+#include <climits>      // realpath(...), PATH_MAX
+#include <cstdio>       // perror(...)
+#include <cstdlib>      // free(...), realpath(...)
+#include <cstring>      // memset(...)
+#include <fcntl.h>      // fcntl(...)
+#include <iostream>     // std::cerr, std::endl
+#include <netinet/ip.h> // socket(...)
+#include <pwd.h>        // getpwnam(...)
+#include <stdexcept>    // std::runtime_error
+#include <string>       // std::string
+#include <sys/socket.h> // bind(...), listen(...)
+#include <sys/stat.h>   // stat(...)
+#include <sys/time.h>   // timeval
+#include <sys/types.h>  // stat(...)
+#include <unistd.h>     // access(...), stat(...)
+#include <vector>       // std::vector<...>
 
 // Set the default index path (from htdocs directory)
 #define INDEX "/index.html"
@@ -148,20 +154,79 @@ int main(int argc, const char* argv[]) {
  * Begin listening for connections
  */
 void begin() {
-  // Change directory to the htdocs path
-  if (chdir(_htdocs.c_str()) != 0)
-    throw std::runtime_error{"failed to set working directory"};
+  // Store the listening socket's file descriptor
+  int sockfd = -1;
 
-  // Set the user and group ID to "nobody"
-  struct passwd* entry = getpwnam("nobody");
-  if (entry == NULL)
-    throw std::runtime_error{"could not find UID/GID for user \"nobody\""};
-  if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
-    throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
-      "(running as root?)"};
+  // Wrap the listen logic in a block so that useless identifiers are freed
+  {
+    // Prepare the bind address information
+    struct sockaddr_in serv_addr;
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family      = AF_INET;
+    serv_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
+    serv_addr.sin_port        = htons(_port);
 
+    // Setup the listening socket
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0), yes = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+    // Attempt to bind to the listen address
+    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) != 0) {
+      close(sockfd);
+      throw std::runtime_error{"failed to bind to 0.0.0.0:" +
+        std::to_string(_port)};
+    }
+    else {
+      // Listen with a backlog of 1
+      listen(sockfd, 1);
+      debug("listening on 0.0.0.0:" + std::to_string(_port));
+    }
+  }
+
+  // // Set the user and group ID to "nobody"
+  // struct passwd* entry = getpwnam("nobody");
+  // if (entry == NULL)
+  //   throw std::runtime_error{"could not find UID/GID for user \"nobody\""};
+  // if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
+  //   throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
+  //     "(running as root?)"};
+
+  // Loop indefinitely to accept and process clients
   while (true) {
-    sleep(1);
+    debug("loop");
+
+    // Setup storage to determine if a connection is incoming
+    fd_set rfds;
+    FD_ZERO(&rfds);
+    FD_SET(sockfd, &rfds);
+    struct timeval timeout{1, 0};
+    debug("select(...)");
+    // Use select with a timeout of 0 to determine status
+    select(sockfd + 1, &rfds, NULL, NULL, &timeout);
+
+    // If the listening socket is marked as read available, client incoming
+    if (FD_ISSET(sockfd, &rfds)) {
+      debug("incoming client");
+      int clifd = accept(sockfd, NULL, NULL);
+      // Check if the client descriptor is valid
+      if (clifd >= 0) {
+        debug("accepted client");
+
+        // We've got a new client - process its request
+        std::string request{};
+        // Prepare a buffer for the incoming data
+        char* buffer = (char*)calloc(8192, sizeof(char));
+        // Read up to (8K - 1) bytes from the file descriptor to ensure a null
+        // character at the end to prevent overflow
+        read(clifd, buffer, 8191);
+        // Copy the C-String into a std::string
+        request += buffer;
+        // Free the storage for the buffer ...
+        free(buffer);
+
+        close(clifd);
+        debug("incoming request:\n\n" + request);
+      }
+    }
   }
 }
 
