@@ -204,11 +204,15 @@ void begin() {
     fd_set rfds;
     FD_ZERO(&rfds);
     FD_SET(sockfd, &rfds);
-    struct timeval timeout{3, 0};
+    struct timeval timeout{INT_MAX, 0};
     // debug("select(...)");
-    // Use select with a timeout of 1 to determine status
+    // Use select with a timeout of INT_MAX to determine status
     if (select(sockfd + 1, &rfds, NULL, NULL, &timeout) < 0 && _debug == true)
       perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
+    // Reset the timeout to three seconds for further select(...) statements
+    // (in case it was modified)
+    timeout.tv_sec  = 3;
+    timeout.tv_usec = 0;
 
     // If the listening socket is marked as read available, client incoming
     if (FD_ISSET(sockfd, &rfds)) {
@@ -218,20 +222,31 @@ void begin() {
       if (clifd >= 0) {
         debug("accepted client");
 
-        // We've got a new client - process its request
-        std::string request{};
-        // Prepare a buffer for the incoming data
-        char* buffer = (char*)calloc(8192, sizeof(char));
-        // Read up to (8K - 1) bytes from the file descriptor to ensure a null
-        // character at the end to prevent overflow
-        read(clifd, buffer, 8191);
-        // Copy the C-String into a std::string
-        request += buffer;
-        // Free the storage for the buffer ...
-        free(buffer);
+        // Wait for three seconds to determine if the client has sent data
+        FD_ZERO(&rfds);
+        FD_SET(clifd, &rfds);
+        if (select(clifd + 1, &rfds, NULL, NULL, &timeout) < 0 &&
+            __debug == true)
+          perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
 
+        // Check if data was sent by the client
+        if (FD_ISSET(clifd, &rfds)) {
+          // We've got a new client - process its request
+          std::string request{};
+          // Prepare a buffer for the incoming data
+          char* buffer = (char*)calloc(8192, sizeof(char));
+          // Read up to (8K - 1) bytes from the file descriptor to ensure a null
+          // character at the end to prevent overflow
+          read(clifd, buffer, 8191);
+          // Copy the C-String into a std::string
+          request += buffer;
+          // Free the storage for the buffer ...
+          free(buffer);
+          debug("incoming request:\n\n" + request);
+        }
+
+        // Close this connection
         close(clifd);
-        debug("incoming request:\n\n" + request);
       }
       else if (_debug == true)
         perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
