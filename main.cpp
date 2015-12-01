@@ -203,7 +203,8 @@ void begin() {
     struct timeval timeout{3, 0};
     // debug("select(...)");
     // Use select with a timeout of 1 to determine status
-    select(sockfd + 1, &rfds, NULL, NULL, &timeout);
+    if (select(sockfd + 1, &rfds, NULL, NULL, &timeout) < 0 && _debug == true)
+      perror("[DEBUG] Error");
 
     // If the listening socket is marked as read available, client incoming
     if (FD_ISSET(sockfd, &rfds)) {
@@ -228,6 +229,8 @@ void begin() {
         close(clifd);
         debug("incoming request:\n\n" + request);
       }
+      else if (_debug == true)
+        perror("[DEBUG] Error");
     }
   }
 }
