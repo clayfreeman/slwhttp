@@ -21,6 +21,7 @@
 #include <cstring>      // memset(...)
 #include <fcntl.h>      // fcntl(...)
 #include <iostream>     // std::cerr, std::endl
+#include <mutex>        // std::mutex, std::unique_lock<...>
 #include <netinet/ip.h> // socket(...)
 #include <pwd.h>        // getpwnam(...)
 #include <set>          // std::set<...>
@@ -30,6 +31,7 @@
 #include <sys/stat.h>   // stat(...)
 #include <sys/time.h>   // timeval
 #include <sys/types.h>  // stat(...)
+#include <thread>       // std::thread
 #include <unistd.h>     // access(...), stat(...)
 #include <vector>       // std::vector<...>
 
@@ -37,26 +39,28 @@
 #define INDEX "/index.html"
 
 // Declare function prototypes
-void        begin       ();
-bool        check_jail  (std::string path);
-inline void debug       (const std::string& str);
-inline bool directory   (const std::string& path);
-inline bool executable  (const std::string& path);
-inline bool file        (const std::string& path);
-inline void lowercase   (std::string& str);
-void        print_help  (bool should_exit = true);
-inline bool readable    (const std::string& path);
-void        ready       ();
-bool        ready       (int fd);
-std::string real_path   (const std::string& path);
+void        begin          ();
+bool        check_jail     (std::string path);
+inline void debug          (const std::string& str);
+inline bool directory      (const std::string& path);
+inline bool executable     (const std::string& path);
+inline bool file           (const std::string& path);
+inline void lowercase      (std::string& str);
+void        print_help     (bool should_exit = true);
+void        process_request(const int& fd, const std::string& request);
+inline bool readable       (const std::string& path);
+void        ready          ();
+bool        ready          (int fd);
+std::string real_path      (const std::string& path);
 
 // Declare storage for global configuration state
-bool               _debug = false;
-std::set<int>    _clients = {};
-std::string       _htdocs = "";
-std::string         _path = "";
-int                 _port = 80;
-int               _sockfd = -1;
+bool            _debug = false;
+std::set<int> _clients = {};
+std::string    _htdocs = "";
+std::mutex      _mutex = {};
+std::string      _path = "";
+int              _port = 80;
+int            _sockfd = -1;
 
 // Declare classes
 class SandboxPath {
@@ -215,12 +219,16 @@ void begin() {
       if (clifd >= 0) {
         debug("accepted client");
         // Add the client to the vector of clients
+        std::unique_lock<std::mutex> lock(_mutex);
         _clients.insert(clifd);
+        lock.unlock();
       }
       else if (_debug == true)
         perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
     }
 
+    // Lock the mutex to reserve access to _clients
+    std::unique_lock<std::mutex> lock(_mutex);
     // Check each client for available data
     for (const int& clifd : _clients) {
       // Check if data was sent by the client
@@ -238,14 +246,11 @@ void begin() {
         // Free the storage for the buffer ...
         free(buffer);
 
-        // Log and process the request
-        debug("incoming request:\n\n" + request);
-
-        // Close this connection and erase it from the client set
-        close(clifd);
-        _clients.erase(clifd);
+        // Process the request
+        std::thread(process_request, clifd, request).detach();
       }
     }
+    lock.unlock();
   }
 }
 
@@ -367,6 +372,29 @@ void print_help(bool should_exit) {
 }
 
 /**
+ * @brief Process Request
+ *
+ * Takes a file descriptor and a std::string request and processes the text as
+ * HTTP protocol
+ *
+ * @param  fd       The file descriptor of the associated client
+ * @param  request  A std::string containing the request headers sent by the
+ *                  connected client
+ *
+ */
+void process_request(const int& fd, const std::string& request) {
+  debug("incoming request:\n\n" + request);
+  // Lock the mutex while modifying _clients
+  std::unique_lock<mutex> lock(_mutex);
+  // Close the file descriptor
+  close(fd);
+  // Remove the file descriptor from the client set
+  _clients.erase(fd);
+  // Unlock the mutex
+  lock.unlock();
+}
+
+/**
  * @brief Readable
  *
  * Determines if a path is readable
@@ -393,12 +421,14 @@ void ready() {
   FD_SET(_sockfd, &rfds);
   // Add each client to the fd set
   int max = _sockfd;
+  std::unique_lock<std::mutex> lock(_mutex);
   for (int clifd : _clients) {
     FD_SET(clifd, &rfds);
     // Keep up with the maximum fd
     if (clifd > max)
       max = clifd;
   }
+  lock.unlock();
   // Declare a maximum timeout
   struct timeval timeout{INT_MAX, 0};
   // Use select to determine status
