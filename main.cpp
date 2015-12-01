@@ -23,6 +23,7 @@
 #include <iostream>     // std::cerr, std::endl
 #include <netinet/ip.h> // socket(...)
 #include <pwd.h>        // getpwnam(...)
+#include <set>          // std::set<...>
 #include <stdexcept>    // std::runtime_error
 #include <string>       // std::string
 #include <sys/socket.h> // bind(...), listen(...)
@@ -45,13 +46,17 @@ inline bool file        (const std::string& path);
 inline void lowercase   (std::string& str);
 void        print_help  (bool should_exit = true);
 inline bool readable    (const std::string& path);
+bool        ready       ();
+bool        ready       (int fd);
 std::string real_path   (const std::string& path);
 
 // Declare storage for global configuration state
-bool         _debug = false;
-std::string _htdocs = "";
-std::string   _path = "";
-int           _port = 80;
+bool               _debug = false;
+std::set<int>    _clients = {};
+std::string       _htdocs = "";
+std::string         _path = "";
+int                 _port = 80;
+int               _sockfd = -1
 
 // Declare classes
 class SandboxPath {
@@ -154,9 +159,6 @@ int main(int argc, const char* argv[]) {
  * Begin listening for connections
  */
 void begin() {
-  // Store the listening socket's file descriptor
-  int sockfd = -1, yes = 1;
-
   // Wrap the listen logic in a block so that useless identifiers are freed
   {
     // Prepare the bind address information
@@ -167,21 +169,23 @@ void begin() {
     serv_addr.sin_port        = htons(_port);
 
     // Setup the listening socket
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0)
+    _sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (_sockfd < 0)
       throw std::runtime_error{"failed to create socket"};
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
+    // Attempt to reuse the listen address if already (or was) in use
+    int yes = 1;
+    if (setsockopt(_sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
       throw std::runtime_error{"failed to set socket option"};
     // Attempt to bind to the listen address
-    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-      close(sockfd);
+    if (bind(_sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+      close(_sockfd);
       throw std::runtime_error{"failed to bind to 0.0.0.0:" +
         std::to_string(_port)};
     }
     else {
       // Listen with a backlog of 1
-      if (listen(sockfd, 8) < 0) {
-        close(sockfd);
+      if (listen(_sockfd, 8) < 0) {
+        close(_sockfd);
         throw std::runtime_error{"failed to listen on socket"};
       }
       debug("listening on 0.0.0.0:" + std::to_string(_port));
@@ -194,62 +198,53 @@ void begin() {
   //   throw std::runtime_error{"could not find UID/GID for user \"nobody\""};
   // if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
   //   throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
-  //     "(running as root?)"};
+  //     "(not running as root?)"};
 
   // Loop indefinitely to accept and process clients
   while (true) {
     debug("loop");
 
-    // Setup storage to determine if a connection is incoming
-    fd_set rfds;
-    FD_ZERO(&rfds);
-    FD_SET(sockfd, &rfds);
-    struct timeval timeout{INT_MAX, 0};
-    // debug("select(...)");
-    // Use select with a timeout of INT_MAX to determine status
-    if (select(sockfd + 1, &rfds, NULL, NULL, &timeout) < 0 && _debug == true)
-      perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
-    // Reset the timeout to three seconds for further select(...) statements
-    // (in case it was modified)
-    timeout.tv_sec  = 3;
-    timeout.tv_usec = 0;
+    // Stall for incoming connections or data
+    ready();
 
     // If the listening socket is marked as read available, client incoming
-    if (FD_ISSET(sockfd, &rfds)) {
+    if (ready(_sockfd)) {
       debug("incoming client");
-      int clifd = accept(sockfd, NULL, NULL);
+      int clifd = accept(_sockfd, NULL, NULL);
       // Check if the client descriptor is valid
       if (clifd >= 0) {
         debug("accepted client");
-
-        // Wait for three seconds to determine if the client has sent data
-        FD_ZERO(&rfds);
-        FD_SET(clifd, &rfds);
-        if (select(clifd + 1, &rfds, NULL, NULL, &timeout) < 0 &&
-            _debug == true)
-          perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
-
-        // Check if data was sent by the client
-        if (FD_ISSET(clifd, &rfds)) {
-          // We've got a new client - process its request
-          std::string request{};
-          // Prepare a buffer for the incoming data
-          char* buffer = (char*)calloc(8192, sizeof(char));
-          // Read up to (8K - 1) bytes from the file descriptor to ensure a null
-          // character at the end to prevent overflow
-          read(clifd, buffer, 8191);
-          // Copy the C-String into a std::string
-          request += buffer;
-          // Free the storage for the buffer ...
-          free(buffer);
-          debug("incoming request:\n\n" + request);
-        }
-
-        // Close this connection
-        close(clifd);
+        // Add the client to the vector of clients
+        _clients.insert(clifd);
       }
       else if (_debug == true)
         perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
+    }
+
+    // Check each client for available data
+    for (const int& clifd : _clients) {
+      // Check if data was sent by the client
+      if (ready(clifd)) {
+        // We've got a new client - process its request
+        std::string request{};
+
+        // Prepare a buffer for the incoming data
+        char* buffer = (char*)calloc(8192, sizeof(char));
+        // Read up to (8K - 1) bytes from the file descriptor to ensure a null
+        // character at the end to prevent overflow
+        read(clifd, buffer, 8191);
+        // Copy the C-String into a std::string
+        request += buffer;
+        // Free the storage for the buffer ...
+        free(buffer);
+
+        // Log and process the request
+        debug("incoming request:\n\n" + request);
+
+        // Close this connection and erase it from the client set
+        close(clifd);
+        _clients.erase(clifd);
+      }
     }
   }
 }
@@ -383,6 +378,54 @@ void print_help(bool should_exit) {
  */
 inline bool readable(const std::string& path) {
   return (access(path.c_str(), R_OK) == 0);
+}
+
+/**
+ * @brief Ready
+ *
+ * Calls select(...) for listening socket and all clients in order to stall for
+ * incoming connections or data
+ */
+bool ready() {
+  // Setup storage to determine if anything is readable
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(_sockfd, &rfds);
+  // Add each client to the fd set
+  int max = _sockfd;
+  for (int clifd : _clients) {
+    FD_SET(clifd, &rfds);
+    // Keep up with the maximum fd
+    if (clifd > max)
+      max = clifd;
+  }
+  // Declare a maximum timeout
+  struct timeval timeout{INT_MAX, 0};
+  // Use select to determine status
+  if (select(max + 1, &rfds, NULL, NULL, &timeout) < 0)
+    throw std::runtime_error{"could not select(...)"};
+}
+
+/**
+ * @brief Ready
+ *
+ * Determines if a specific file descriptor is ready for reading
+ *
+ * @param  fd  The file descriptor to test
+ *
+ * @return            true if ready, otherwise false
+ */
+bool ready(int fd) {
+  // Setup storage to determine if fd is readable
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(fd, &rfds);
+  // Declare an immediate timeout
+  struct timeval timeout{0, 0};
+  // Use select to determine status
+  if (select(fd + 1, &rfds, NULL, NULL, &timeout) < 0)
+    throw std::runtime_error{"could not select(" + std::to_string(fd) + ")"};
+  return FD_ISSET(fd);
 }
 
 /**
