@@ -170,8 +170,8 @@ void begin() {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0), yes = 1;
     if (sockfd < 0)
       throw std::runtime_error{"failed to create socket"};
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
-      throw std::runtime_error{"failed to set socket option"};
+    // if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
+    //   throw std::runtime_error{"failed to set socket option"};
     // Attempt to bind to the listen address
     if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
       close(sockfd);
