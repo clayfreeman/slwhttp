@@ -29,6 +29,9 @@ SandboxPath::SandboxPath(const std::string& path) {
     throw std::runtime_error{"no jail set for SandboxPath"};
   // Get the real path of the provided path
   std::string _rpath = File::realPath(path);
+  // Check that realPath(...) didn't fail
+  if (_rpath.length() == 0)
+    throw std::runtime_error("realPath(\"" + path + "\") = \"\"");
   // Check that the resulting path is within the sandbox
   if (SandboxPath::checkJail(_rpath))
     this->rpath = _rpath;
