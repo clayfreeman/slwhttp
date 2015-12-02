@@ -45,7 +45,7 @@ inline void              debug          (const std::string& str);
 void                     print_help     (bool should_exit = true);
 void                     process_request(const int& fd);
 void                     ready          ();
-bool                     ready          (int fd, int timeout = 0);
+bool                     ready          (int fd, int tout = 0);
 
 // Declare storage for global configuration state
 bool            _debug = false;
@@ -354,13 +354,13 @@ void ready() {
  *
  * @return            true if ready, otherwise false
  */
-bool ready(int fd, int timeout) {
+bool ready(int fd, int tout) {
   // Setup storage to determine if fd is readable
   fd_set rfds;
   FD_ZERO(&rfds);
   FD_SET(fd, &rfds);
   // Declare an immediate timeout
-  struct timeval timeout{0, 0};
+  struct timeval timeout{tout, 0};
   // Use select to determine status
   if (select(fd + 1, &rfds, NULL, NULL, &timeout) < 0)
     throw std::runtime_error{"could not select(" + std::to_string(fd) + ")"};
