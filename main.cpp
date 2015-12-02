@@ -449,7 +449,7 @@ void ready() {
   struct timeval timeout{INT_MAX, 0};
   // Use select to determine status
   if (select(max + 1, &rfds, NULL, NULL, &timeout) < 0) {
-    perror();
+    perror("");
     throw std::runtime_error{"could not select(...)"};
   }
 }
@@ -474,7 +474,7 @@ bool ready(int fd, int tout) {
   struct timeval timeout{tout, 0};
   // Use select to determine status
   if (select(fd + 1, &rfds, NULL, NULL, &timeout) < 0) {
-    perror();
+    perror("");
     throw std::runtime_error{"could not select(" + std::to_string(fd) + ")"};
   }
   return FD_ISSET(fd, &rfds);
