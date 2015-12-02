@@ -265,7 +265,7 @@ void process_request(const int& fd) {
   std::string request{};
 
   // Loop until empty line as per HTTP protocol
-  while (request.find("\r\n\r\n") == std::string::npos) {
+  while (request.find("\n\n") == std::string::npos) {
     // Prepare a buffer for the incoming data
     char* buffer = (char*)calloc(8192, sizeof(char));
     // Read up to (8K - 1) bytes from the file descriptor to ensure a null
@@ -275,12 +275,16 @@ void process_request(const int& fd) {
     request += buffer;
     // Free the storage for the buffer ...
     free(buffer);
+    // Remove carriage returns from the request
+    for (size_t loc = request.find('\r'); loc != std::string::npos;
+        loc = request.find('\r', loc))
+      request.replace(loc, 1, "");
   }
 
   // Log incoming request to debug
   debug("incoming request:\n\n" + request);
   // Create vector that holds each line
-  std::vector<std::string> lines = Utility::explode(request, "\r\n");
+  std::vector<std::string> lines = Utility::explode(request, "\n");
   // Check for GET request
   for (std::string line : lines) {
     // Explode the line into words
