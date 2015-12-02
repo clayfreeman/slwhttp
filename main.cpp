@@ -341,25 +341,18 @@ void process_request(int fd) {
             // If a non-redirectable path was provided, use it
             _rpath = words[1];
 
-          if (_rpath.find("/") == 0) {
-            // Remove the slash at the beginning of the request path
-            _rpath = _rpath.substr(1);
-            try {
-              // Determine absolute request path
-              _rpath = _htdocs + "/" + _rpath;
-              debug("Request for absolute path: " + _rpath);
-              SandboxPath path{_rpath};
-              debug("Request for file: " + path.get());
-              // Attempt to dump the file to the client
-              dump_file(fd, path);
-            } catch (const std::exception& e) {
-              access_denied(fd);
-              debug(e.what());
-            }
-          }
-          else
-            // Invalid path; request paths must begin with "/"
+          try {
+            // Determine absolute request path
+            _rpath = _htdocs + "/" + _rpath;
+            debug("Request for absolute path: " + _rpath);
+            SandboxPath path{_rpath};
+            debug("Request for file: " + path.get());
+            // Attempt to dump the file to the client
+            dump_file(fd, path);
+          } catch (const std::exception& e) {
             access_denied(fd);
+            debug(e.what());
+          }
         }
       }
     }
