@@ -367,10 +367,10 @@ void process_request(int fd) {
 
           try {
             // Determine absolute request path
+            _rpath = _htdocs + "/" + _rpath;
             debug("Request for path: " + _rpath);
-            debug("Request for realpath: " + File::realPath(_htdocs + "/" +
-              _rpath));
-            SandboxPath path{_htdocs + "/" + _rpath};
+            debug("Request for realpath: " + _rpath);
+            SandboxPath path{_rpath};
             debug("Request for file: " + path.get());
             // Attempt to dump the file to the client
             dump_file(fd, path);
