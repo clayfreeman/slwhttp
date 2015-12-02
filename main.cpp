@@ -370,6 +370,7 @@ void process_request(int fd) {
             dump_file(fd, path);
           } catch (const std::exception& e) {
             access_denied(fd);
+            debug(e.what());
           }
         }
       }
