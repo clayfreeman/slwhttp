@@ -303,16 +303,16 @@ void process_request(const int& fd) {
             std::ifstream file;
             file.open(path.get().c_str(), std::ios::binary);
             // Calculate the file size
-            myfile.seekg(0, std::ios::end);
+            file.seekg(0, std::ios::end);
             std::streampos end = file.tellg();
-            myfile.seekg(0, std::ios::beg);
+            file.seekg(0, std::ios::beg);
             std::streampos beg = file.tellg();
 
             // Write response to client
             const std::string response{
-              "HTTP/1.0 200 OK\r\n" +
-              "Content-Type: application/octet-stream\r\n" +
-              "Content-Length: " + std::to_string(end - beg) + "\r\n" +
+              "HTTP/1.0 200 OK\r\n"
+              "Content-Type: application/octet-stream\r\n"
+              "Content-Length: " + std::to_string(end - beg) + "\r\n"
               "\r\n\r\n"
             };
             write(fd, response.c_str(), response.length());
