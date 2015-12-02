@@ -363,6 +363,7 @@ void process_request(int fd) {
 
           try {
             // Determine absolute request path
+            debug("Request for path: " + _rpath);
             SandboxPath path{_htdocs + "/" + _rpath};
             debug("Request for file: " + path.get());
             // Attempt to dump the file to the client
