@@ -236,7 +236,7 @@ inline void debug(const std::string& str) {
  */
 void dump_file(int fd, const SandboxPath& path) {
   // Open file for reading
-  int file = open(path.get(), O_RDONLY);
+  int file = open(path.get().c_str(), O_RDONLY);
   // Ensure the file was successfully opened and is in good condition
   if (file >= 0) {
     // Calculate the file size
