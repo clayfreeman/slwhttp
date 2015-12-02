@@ -29,6 +29,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <sys/signal.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
