@@ -41,10 +41,14 @@
 #define INDEX "/index.html"
 
 // Declare function prototypes
+void                     access_denied  (int fd);
 void                     begin          ();
 inline void              debug          (const std::string& str);
+void                     dump_file      (int fd, const SandboxPath& path);
+void                     prepare_socket ();
 void                     print_help     (bool should_exit = true);
 void                     process_request(const int& fd);
+std::vector<std::string> read_request   (int fd);
 void                     ready          ();
 bool                     ready          (int fd, int tout = 0);
 
@@ -129,62 +133,52 @@ int main(int argc, const char* argv[]) {
 }
 
 /**
+ * @brief Access Denied
+ *
+ * Writes a HTTP/1.0 403 error to the given client
+ *
+ * @param  fd  The file descriptor of the associated client
+ */
+void access_denied(int fd) {
+  // Build the response variable
+  std::string content{
+    "Forbidden\r\n"
+  };
+  std::string response{
+    "HTTP/1.0 403 Forbidden\r\n"
+    "Content-Type: text/html\r\n"
+    "Content-Length: " + std::to_string(content.length()) + "\r\n"
+    "\r\n" +
+    content
+  };
+  // Write response to client
+  write(fd, response.c_str(), response.length());
+  fsync(fd);
+}
+
+/**
  * @brief Begin
  *
  * Begin listening for connections
  */
 void begin() {
-  // Wrap the listen logic in a block so that useless identifiers are freed
-  {
-    // Prepare the bind address information
-    struct sockaddr_in serv_addr;
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family      = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port        = htons(_port);
+  // Prepare the listening socket in order to accept connections
+  prepare_socket();
 
-    // Setup the listening socket
-    _sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (_sockfd < 0)
-      throw std::runtime_error{"failed to create socket"};
-    // Attempt to reuse the listen address if already (or was) in use
-    int yes = 1;
-    if (setsockopt(_sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
-      throw std::runtime_error{"failed to set socket option"};
-    // Attempt to bind to the listen address
-    if (bind(_sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-      close(_sockfd);
-      throw std::runtime_error{"failed to bind to 0.0.0.0:" +
-        std::to_string(_port)};
-    }
-    else {
-      // Listen with a backlog of 1
-      if (listen(_sockfd, 8) < 0) {
-        close(_sockfd);
-        throw std::runtime_error{"failed to listen on socket"};
-      }
-      debug("listening on 0.0.0.0:" + std::to_string(_port));
-    }
-  }
-
-  // // Set the user and group ID to "nobody"
-  // struct passwd* entry = getpwnam("nobody");
-  // if (entry == NULL)
-  //   throw std::runtime_error{"could not find UID/GID for user \"nobody\""};
-  // if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
-  //   throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
-  //     "(not running as root?)"};
+  // Set the user and group ID to "nobody"
+  struct passwd* entry = getpwnam("nobody");
+  if (entry == NULL)
+    throw std::runtime_error{"could not find UID/GID for user \"nobody\""};
+  if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
+    throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
+      "(not running as root?)"};
 
   // Loop indefinitely to accept and process clients
   while (true) {
-    debug("loop");
-
     // Stall for incoming connections or data
     ready();
-
     // If the listening socket is marked as read available, client incoming
     if (ready(_sockfd)) {
-      debug("incoming client");
       int clifd = accept(_sockfd, NULL, NULL);
       // Check if the client descriptor is valid
       if (clifd >= 0) {
@@ -197,7 +191,6 @@ void begin() {
       else if (_debug == true)
         perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
     }
-
     // Lock the mutex to reserve access to _clients
     std::unique_lock<std::mutex> lock(_mutex);
     // Check each client for available data
@@ -223,6 +216,81 @@ inline void debug(const std::string& str) {
   if (_debug == true)
     // Print the given message
     std::cerr << "[DEBUG] " << str << std::endl;
+}
+
+/**
+ * @brief Dump File
+ *
+ * Attempts to dump a file to a client file descriptor
+ *
+ * @param  path  A SanboxPath to the file to dump
+ * @param  fd    The file descriptor to dump the file
+ */
+void dump_file(int fd, const SandboxPath& path) {
+  // Open file for reading
+  std::ifstream file;
+  file.open(path.get().c_str(), std::ios::binary);
+  // Ensure the file was successfully opened and is in good condition
+  if (file.is_open() && file.good()) {
+    // Calculate the file size
+    file.seekg(0, std::ios::end);
+    std::streampos end = file.tellg();
+    file.seekg(0, std::ios::beg);
+    std::streampos beg = file.tellg();
+
+    // Write response to client
+    const std::string response{
+      "HTTP/1.0 200 OK\r\n"
+      "Content-Type: application/octet-stream\r\n"
+      "Content-Length: " + std::to_string(end - beg) + "\r\n"
+      "\r\n"
+    };
+    write(fd, response.c_str(), response.length());
+    fsync(fd);
+
+    // Dump the file contents to the client
+    while (file.good()) {
+      // Read a buffer from the file
+      const int size = 1024;
+      char buf[size] = "";
+      file.read(buf, size);
+      // Write the buffer to the client
+      write(fd, buf, strlen(buf));
+    }
+    fsync(fd);
+  }
+}
+
+void prepare_socket() {
+  // Prepare the bind address information
+  struct sockaddr_in serv_addr;
+  memset(&serv_addr, 0, sizeof(serv_addr));
+  serv_addr.sin_family      = AF_INET;
+  serv_addr.sin_addr.s_addr = INADDR_ANY;
+  serv_addr.sin_port        = htons(_port);
+
+  // Setup the listening socket
+  _sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (_sockfd < 0)
+    throw std::runtime_error{"failed to create socket"};
+  // Attempt to reuse the listen address if already (or was) in use
+  int yes = 1;
+  if (setsockopt(_sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
+    throw std::runtime_error{"failed to set socket option"};
+  // Attempt to bind to the listen address
+  if (bind(_sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+    close(_sockfd);
+    throw std::runtime_error{"failed to bind to 0.0.0.0:" +
+      std::to_string(_port)};
+  }
+  else {
+    // Listen with a backlog of 1
+    if (listen(_sockfd, 8) < 0) {
+      close(_sockfd);
+      throw std::runtime_error{"failed to listen on socket"};
+    }
+    debug("listening on 0.0.0.0:" + std::to_string(_port));
+  }
 }
 
 /**
@@ -261,77 +329,32 @@ void print_help(bool should_exit) {
  *                  connected client
  */
 void process_request(const int& fd) {
-  // Prepare storage for the request headers
-  std::string request{};
   // Ensure the client has sent some data within three seconds
   if (ready(fd, 3)) {
-    // Loop until empty line as per HTTP protocol
-    while (request.find("\n\n") == std::string::npos) {
-      // Prepare a buffer for the incoming data
-      char* buffer = (char*)calloc(8192, sizeof(char));
-      // Read up to (8K - 1) bytes from the file descriptor to ensure a null
-      // character at the end to prevent overflow
-      read(fd, buffer, 8191);
-      // Copy the C-String into a std::string
-      request += buffer;
-      // Free the storage for the buffer ...
-      free(buffer);
-      // Remove carriage returns from the request
-      for (size_t loc = request.find('\r'); loc != std::string::npos;
-          loc = request.find('\r', loc))
-        request.replace(loc, 1, "");
-    }
-    // Log incoming request to debug
-    debug("incoming request:\n\n" + request);
-    // Create vector that holds each line
-    std::vector<std::string> lines = Utility::explode(request, "\n");
-    // Check for GET request
-    for (std::string line : lines) {
-      // Explode the line into words
-      std::vector<std::string> words = Utility::explode(line, " ");
-      // Check for "GET" request
-      if (words.size() > 1) {
-        if (Utility::strtolower(words[0]) == "get") {
-          // Extract the requested path
-          SandboxPath path{_htdocs + "/" + words[1]};
-          debug("GET " + path.get());
-
-          // Attempt to dump the file to the client
-          try {
-            // Open file for reading
-            std::ifstream file;
-            file.open(path.get().c_str(), std::ios::binary);
-            // Calculate the file size
-            file.seekg(0, std::ios::end);
-            std::streampos end = file.tellg();
-            file.seekg(0, std::ios::beg);
-            std::streampos beg = file.tellg();
-
-            // Write response to client
-            const std::string response{
-              "HTTP/1.0 200 OK\r\n"
-              "Content-Type: application/octet-stream\r\n"
-              "Content-Length: " + std::to_string(end - beg) + "\r\n"
-              "\r\n"
-            };
-            write(fd, response.c_str(), response.length());
-            fsync(fd);
-
-            // Dump the file contents to the client
-            while (!file.eof()) {
-              // Read a buffer from the file
-              const int size = 1024;
-              char buf[size] = "";
-              file.read(buf, size);
-              // Write the buffer to the client
-              write(fd, buf, strlen(buf));
+    // Read the request headers provided by the client
+    try {
+      std::vector<std::string> request = read_request(fd);
+      // Check for GET request
+      for (std::string line : request) {
+        // Explode the line into words
+        std::vector<std::string> words = Utility::explode(line, " ");
+        // Check for "GET" request
+        if (words.size() > 1) {
+          if (Utility::strtolower(words[0]) == "get") {
+            // Extract the requested path
+            SandboxPath path{_htdocs + "/" + words[1]};
+            debug("Fetch path: " + path.get());
+            // Attempt to dump the file to the client
+            try {
+              dump_file(fd, path);
+            } catch (const std::exception& e) {
+              access_denied(fd);
             }
-            fsync(fd);
-          } catch (const std::exception& e) {
-            debug(e.what());
           }
         }
       }
+    } catch (const std::exception& e) {
+      debug(e.what());
     }
   }
 
@@ -344,6 +367,39 @@ void process_request(const int& fd) {
   _clients.erase(fd);
   // Unlock the mutex
   lock.unlock();
+}
+
+/**
+ * @brief Read Request
+ *
+ * Reads HTTP/1.0 request headers from the given client
+ *
+ * @param  fd  The file descriptor of the associated client
+ *
+ * @return     std::vector of request header lines
+ */
+std::vector<std::string> read_request(int fd) {
+  std::vector<std::string> request{};
+  // Loop until empty line as per HTTP protocol
+  while (request.size() == 0 || request.back().length() > 0) {
+    if (ready(fd, 3)) {
+      // Prepare a buffer for the incoming data
+      char* buffer = (char*)calloc(8192, sizeof(char));
+      // Read up to (8K - 1) bytes from the file descriptor to ensure a null
+      // character at the end to prevent overflow
+      read(fd, buffer, 8191);
+      // Copy the C-String into a std::string
+      std::string req{buffer};
+      // Free the storage for the buffer ...
+      free(buffer);
+      // Add each line of the buffer to the request vector
+      for (std::string line : Utility::explode(req, "\n"))
+        request.push_back(line);
+    }
+    else
+      throw std::runtime_error{"read timeout"};
+  }
+  return request;
 }
 
 /**
