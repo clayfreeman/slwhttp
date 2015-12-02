@@ -153,7 +153,6 @@ void access_denied(int fd) {
   };
   std::string response{
     "HTTP/1.0 403 Forbidden\r\n"
-    "Content-Type: text/html\r\n"
     "Content-Length: " + std::to_string(content.length()) + "\r\n"
     "\r\n" +
     content
@@ -249,7 +248,6 @@ void dump_file(int fd, const SandboxPath& path) {
     // Write response to client
     const std::string response{
       "HTTP/1.0 200 OK\r\n"
-      "Content-Type: application/octet-stream\r\n"
       "Content-Length: " + std::to_string(end - beg) + "\r\n"
       "\r\n"
     };
