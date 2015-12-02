@@ -391,7 +391,7 @@ std::vector<std::string> read_request(int fd) {
       // Free the storage for the buffer ...
       free(buffer);
       // Add each line of the buffer to the request vector
-      if (Utility::trim(buffer).length() > 0)
+      if (Utility::trim(req).length() > 0)
         for (std::string line : Utility::explode(req, "\n")) {
           request.push_back(Utility::trim(line));
           debug("add request line: " + line);
