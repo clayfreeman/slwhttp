@@ -29,6 +29,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <sys/sendfile.h>
 #include <sys/signal.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -235,35 +236,25 @@ inline void debug(const std::string& str) {
  */
 void dump_file(int fd, const SandboxPath& path) {
   // Open file for reading
-  std::ifstream file;
-  file.open(path.get().c_str(), std::ios::binary);
+  int file = open(path.c_str(), O_RDONLY);
   // Ensure the file was successfully opened and is in good condition
-  if (file.is_open() && file.good()) {
+  if (file >= 0) {
     // Calculate the file size
-    file.seekg(0, std::ios::end);
-    std::streampos end = file.tellg();
-    file.seekg(0, std::ios::beg);
-    std::streampos beg = file.tellg();
+    off_t fsize = lseek(file, 0, SEEK_END);
+    if (fsize >= 0 && lseek(file, 0, SEEK_SET) >= 0) {
+      // Write response to client
+      const std::string response{
+        "HTTP/1.0 200 OK\r\n"
+        "Content-Length: " + std::to_string(end - beg) + "\r\n"
+        "\r\n"
+      };
+      write(fd, response.c_str(), response.length());
+      fsync(fd);
 
-    // Write response to client
-    const std::string response{
-      "HTTP/1.0 200 OK\r\n"
-      "Content-Length: " + std::to_string(end - beg) + "\r\n"
-      "\r\n"
-    };
-    write(fd, response.c_str(), response.length());
-    fsync(fd);
-
-    // Dump the file contents to the client
-    while (file.good()) {
-      // Read a buffer from the file
-      const int size = 1024;
-      char buf[size] = "";
-      file.read(buf, size);
-      // Write the buffer to the client
-      write(fd, buf, strlen(buf));
+      // Dump the file contents to the client
+      sendfile(fd, file, 0, fsize);
+      fsync(fd);
     }
-    fsync(fd);
   }
 }
 
