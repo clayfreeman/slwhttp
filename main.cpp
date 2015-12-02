@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <fstream>
 #include <iostream>
 #include <mutex>
@@ -429,15 +430,19 @@ void ready() {
   // Setup storage to determine if anything is readable
   fd_set rfds;
   FD_ZERO(&rfds);
-  FD_SET(_sockfd, &rfds);
+  if (fcntl(_sockfd, F_GETFD) != -1 || errno != EBADF)
+    FD_SET(_sockfd, &rfds);
   // Add each client to the fd set
   int max = _sockfd;
   std::unique_lock<std::mutex> lock(_mutex);
   for (int clifd : _clients) {
-    FD_SET(clifd, &rfds);
-    // Keep up with the maximum fd
-    if (clifd > max)
-      max = clifd;
+    // Ensure a valid clifd
+    if (fcntl(clifd, F_GETFD) != -1 || errno != EBADF) {
+      FD_SET(clifd, &rfds);
+      // Keep up with the maximum fd
+      if (clifd > max)
+        max = clifd;
+    }
   }
   lock.unlock();
   // Declare a maximum timeout
@@ -460,7 +465,9 @@ bool ready(int fd, int tout) {
   // Setup storage to determine if fd is readable
   fd_set rfds;
   FD_ZERO(&rfds);
-  FD_SET(fd, &rfds);
+  // Ensure a valid clifd
+  if (fcntl(fd, F_GETFD) != -1 || errno != EBADF)
+    FD_SET(fd, &rfds);
   // Declare an immediate timeout
   struct timeval timeout{tout, 0};
   // Use select to determine status
