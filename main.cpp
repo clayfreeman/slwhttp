@@ -324,7 +324,7 @@ void process_request(int fd) {
       // Read the request headers provided by the client
       std::vector<std::string> request = read_request(fd);
       std::string content = Utility::implode(request, "\n  ");
-      debug("request content:\n  " + Utility::trim(content));
+      debug("request content:\n  " + content);
       // Check for GET request
       for (std::string line : request) {
         // Explode the line into words
@@ -377,9 +377,9 @@ void process_request(int fd) {
  * @return     std::vector of request header lines
  */
 std::vector<std::string> read_request(int fd) {
-  std::vector<std::string> request{};
+  std::string request{};
   // Loop until empty line as per HTTP protocol
-  while (request.size() == 0 || request.back().length() != 0) {
+  while (request.find("\n\n") == std::string::npos) {
     if (valid(fd) && ready(fd, 3)) {
       // Prepare a buffer for the incoming data
       char* buffer = (char*)calloc(8192, sizeof(char));
@@ -390,18 +390,16 @@ std::vector<std::string> read_request(int fd) {
       std::string req{buffer};
       // Free the storage for the buffer ...
       free(buffer);
-      // Add each line of the buffer to the request vector
-      if (Utility::trim(req).length() > 0)
-        for (std::string line : Utility::explode(req, "\n")) {
-          request.push_back(Utility::trim(line));
-          debug("add request line: " + line);
-        }
-      else
-        request.push_back("");
+      // Replace carriage return in req with null
+      for (auto loc = req.find("\r\n"); loc != std::string::npos;
+          loc = req.find("\r\n", ++loc))
+        req.replace(loc, 2, "\n");
+      // Append req to the request headers
+      request += req;
     }
     else break;
   }
-  return request;
+  return Utility::explode(Utility::trim(request), "\n");
 }
 
 /**
