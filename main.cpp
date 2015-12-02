@@ -361,6 +361,10 @@ void process_request(int fd) {
             // If a non-redirectable path was provided, use it
             _rpath = words[1];
 
+          if (_rpath.find("/") == 0)
+            // Remove the slash at the beginning of the request path
+            _rpath = _rpath.substr(1);
+
           try {
             // Determine absolute request path
             debug("Request for path: " + _rpath);
