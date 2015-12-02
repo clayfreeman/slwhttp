@@ -120,6 +120,9 @@ int main(int argc, const char* argv[]) {
     }
   }
 
+  // Warn the user of reduced performance in debug mode
+  debug("running in debug mode will reduce performance");
+
   // Check that the sandbox argument was specified
   if (_htdocs.length() == 0) {
     std::cerr << "Error: htdocs directory not specified" << std::endl;
