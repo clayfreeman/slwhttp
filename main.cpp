@@ -319,7 +319,7 @@ void process_request(const int& fd) {
             fsync(fd);
 
             // Dump the file contents to the client
-            while (!file.feof()) {
+            while (!file.eof()) {
               // Read a buffer from the file
               const int size = 1024;
               char buf[size] = "";
