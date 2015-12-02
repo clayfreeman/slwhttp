@@ -333,7 +333,7 @@ void print_help(bool should_exit) {
  *
  * @param  fd  The file descriptor of the associated client
  */
-void process_request(const int& fd) {
+void process_request(int fd) {
   // Ensure the client has sent some data within three seconds
   if (ready(fd, 3)) {
     // Read the request headers provided by the client
