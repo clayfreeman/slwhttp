@@ -179,9 +179,7 @@ void begin() {
   // Loop indefinitely to accept and process clients
   while (true) {
     // Stall for incoming connections or data
-    try {
-      ready();
-    } catch (const std::exception& e) {}
+    ready();
     // If the listening socket is marked as read available, client incoming
     if (ready(_sockfd)) {
       int clifd = accept(_sockfd, NULL, NULL);
@@ -450,8 +448,8 @@ void ready() {
   // Declare a maximum timeout
   struct timeval timeout{INT_MAX, 0};
   // Use select to determine status
-  if (select(max + 1, &rfds, NULL, NULL, &timeout) < 0)
-    throw std::runtime_error{"could not select(...)"};
+  select(max + 1, &rfds, NULL, NULL, &timeout);
+  // throw std::runtime_error{"could not select(...)"};
 }
 
 /**
@@ -473,7 +471,7 @@ bool ready(int fd, int tout) {
   // Declare an immediate timeout
   struct timeval timeout{tout, 0};
   // Use select to determine status
-  if (select(fd + 1, &rfds, NULL, NULL, &timeout) < 0)
-    throw std::runtime_error{"could not select(" + std::to_string(fd) + ")"};
+  select(fd + 1, &rfds, NULL, NULL, &timeout);
+  // throw std::runtime_error{"could not select(" + std::to_string(fd) + ")"};
   return FD_ISSET(fd, &rfds);
 }
