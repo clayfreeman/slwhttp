@@ -324,7 +324,7 @@ void process_request(int fd) {
       // Read the request headers provided by the client
       std::vector<std::string> request = read_request(fd);
       std::string content = Utility::implode(request, "\n  ");
-      debug("Request content:\n  " + Utility::trim(content));
+      debug("request content:\n  " + Utility::trim(content));
       // Check for GET request
       for (std::string line : request) {
         // Explode the line into words
@@ -345,9 +345,9 @@ void process_request(int fd) {
           try {
             // Determine absolute request path
             _rpath = _htdocs + "/" + _rpath;
-            debug("Raw request for path: " + _rpath);
+            debug("raw request for path: " + _rpath);
             SandboxPath path{_rpath};
-            debug("Sandboxed request for real path: " + path.get());
+            debug("sandboxed request for real path: " + path.get());
             // Attempt to dump the file to the client
             dump_file(fd, path);
           } catch (const std::exception& e) {
@@ -391,8 +391,10 @@ std::vector<std::string> read_request(int fd) {
       // Free the storage for the buffer ...
       free(buffer);
       // Add each line of the buffer to the request vector
-      for (std::string line : Utility::explode(req, "\n"))
+      for (std::string line : Utility::explode(req, "\n")) {
+        debug("add request line: " + line);
         request.push_back(line);
+      }
     }
     else break;
   }
