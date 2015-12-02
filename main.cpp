@@ -333,7 +333,7 @@ void process_request(int fd) {
         if (words.size() > 0 && Utility::strtolower(words[0]) == "get") {
           // Determine htdocs relative request path
           std::string _rpath{};
-          if (words.size() == 1 || words[1] == "/")
+          if (words.size() == 1 || Utility::trim(words[1]) == "/")
             // If there was no path provided, or the root was requested, serve
             // the INDEX macro from htdocs
             _rpath = INDEX;
