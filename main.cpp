@@ -235,31 +235,34 @@ inline void debug(const std::string& str) {
  * @param  fd    The file descriptor to dump the file
  */
 void dump_file(int fd, const SandboxPath& path) {
-  // Open file for reading
-  int file = open(path.get().c_str(), O_RDONLY);
-  // Ensure the file was successfully opened and is in good condition
-  if (file >= 0) {
-    // Calculate the file size
-    off_t fsize = lseek(file, 0, SEEK_END);
-    if (fsize >= 0 && lseek(file, 0, SEEK_SET) >= 0) {
-      // Write response to client
-      const std::string response{
-        "HTTP/1.0 200 OK\r\n"
-        "Content-Length: " + std::to_string(fsize) + "\r\n"
-        "\r\n"
-      };
+  // Ensure the output fd is valid
+  if (fcntl(fd, F_GETFD) != -1 || errno != EBADF) {
+    // Open file for reading
+    int file = open(path.get().c_str(), O_RDONLY);
+    // Ensure the file was successfully opened and is in good condition
+    if (file >= 0) {
+      // Calculate the file size
+      off_t fsize = lseek(file, 0, SEEK_END);
+      if (fsize >= 0 && lseek(file, 0, SEEK_SET) >= 0) {
+        // Write response to client
+        const std::string response{
+          "HTTP/1.0 200 OK\r\n"
+          "Content-Length: " + std::to_string(fsize) + "\r\n"
+          "\r\n"
+        };
 
-      // Dump the response to the client
-      if (write(fd, response.c_str(), response.length()) < 0)
-        perror("WRITE ERROR");
-      if (sendfile(fd, file, 0, fsize) < 0)
-        perror("WRITE ERROR");
+        // Dump the response to the client
+        if (write(fd, response.c_str(), response.length()) < 0)
+          perror("WRITE ERROR");
+        if (sendfile(fd, file, 0, fsize) < 0)
+          perror("WRITE ERROR");
+      }
     }
+    // Close the source file
+    close(file);
+    // Synchronize the output
+    fsync(fd);
   }
-  // Close the source file
-  close(file);
-  // Synchronize the output
-  fsync(fd);
 }
 
 /**
