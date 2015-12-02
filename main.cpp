@@ -23,10 +23,8 @@
 #include <fcntl.h>
 #include <fstream>
 #include <iostream>
-#include <mutex>
 #include <netinet/ip.h>
 #include <pwd.h>
-#include <set>
 #include <stdexcept>
 #include <string>
 #include <sys/sendfile.h>
@@ -54,15 +52,12 @@ void                     prepare_socket ();
 void                     print_help     (bool should_exit = true);
 void                     process_request(int fd);
 std::vector<std::string> read_request   (int fd);
-void                     ready          ();
 bool                     ready          (int fd, int tout = 0);
 inline bool              valid          (int fd);
 
 // Declare storage for global configuration state
 bool            _debug = false;
-std::set<int> _clients = {};
 std::string    _htdocs = "";
-std::mutex      _mutex = {};
 std::string      _path = "";
 int              _port = 80;
 int            _sockfd = -1;
@@ -149,19 +144,21 @@ int main(int argc, const char* argv[]) {
  * @param  fd  The file descriptor of the associated client
  */
 void access_denied(int fd) {
-  // Build the response variable
-  std::string content{
-    "Forbidden\r\n"
-  };
-  std::string response{
-    "HTTP/1.0 403 Forbidden\r\n"
-    "Content-Length: " + std::to_string(content.length()) + "\r\n"
-    "\r\n" +
-    content
-  };
-  // Write response to client
-  write(fd, response.c_str(), response.length());
-  fsync(fd);
+  if (valid(fd)) {
+    // Build the response variable
+    std::string content{
+      "Forbidden\r\n"
+    };
+    std::string response{
+      "HTTP/1.0 403 Forbidden\r\n"
+      "Content-Length: " + std::to_string(content.length()) + "\r\n"
+      "\r\n" +
+      content
+    };
+    // Write response to client
+    write(fd, response.c_str(), response.length());
+    fsync(fd);
+  }
 }
 
 /**
@@ -182,34 +179,19 @@ void begin() {
   //     "(not running as root?)"};
 
   // Loop indefinitely to accept and process clients
-  while (true) {
+  while (valid(_sockfd)) {
     // Stall for incoming connections or data
-    ready();
+    ready(_sockfd, INT_MAX);
     // If the listening socket is marked as read available, client incoming
-    if (ready(_sockfd)) {
-      int clifd = accept(_sockfd, NULL, NULL);
-      // Check if the client descriptor is valid
-      if (clifd >= 0) {
-        debug("accepted client");
-        // Add the client to the vector of clients
-        std::unique_lock<std::mutex> lock(_mutex);
-        debug("inserting fd:" + std::to_string(clifd));
-        _clients.insert(clifd);
-        lock.unlock();
-      }
-      else if (_debug == true)
-        perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
+    int clifd = accept(_sockfd, NULL, NULL);
+    // Check if the client descriptor is valid
+    if (valid(clifd)) {
+      debug("accepted client");
+      // Process the request
+      std::thread(process_request, clifd).detach();
     }
-    // Lock the mutex to reserve access to _clients
-    std::unique_lock<std::mutex> lock(_mutex);
-    // Check each client for available data
-    for (int clifd : _clients) {
-      // Check if data was sent by the client
-      if (ready(clifd))
-        // Process the request
-        std::thread(process_request, clifd).detach();
-    }
-    lock.unlock();
+    else if (_debug == true)
+      perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
   }
 }
 
@@ -337,63 +319,60 @@ void print_help(bool should_exit) {
  * @param  fd  The file descriptor of the associated client
  */
 void process_request(int fd) {
-  // Ensure the client has sent some data within three seconds
-  if (ready(fd, 3)) {
-    // Read the request headers provided by the client
-    try {
-      std::vector<std::string> request = read_request(fd);
-      debug("Request content:\n" + Utility::implode(request, "\n"));
-      // Check for GET request
-      for (std::string line : request) {
-        // Explode the line into words
-        std::vector<std::string> words = Utility::explode(line, " ");
-        // Check for "GET" request
-        if (words.size() > 0 && Utility::strtolower(words[0]) == "get") {
-          // Determine htdocs relative request path
-          std::string _rpath{};
-          if (words.size() == 1 || words[1] == "/")
-            // If there was no path provided, or the root was requested, serve
-            // the INDEX macro from htdocs
-            _rpath = INDEX;
-          else
-            // If a non-redirectable path was provided, use it
-            _rpath = words[1];
+  // Ensure that the provided fd is valid
+  if (valid(fd)) {
+    debug("process_request(" + std::to_string(clifd) + ")");
+    // Ensure the client has sent some data within three seconds
+    if (ready(fd, 3)) {
+      // Read the request headers provided by the client
+      try {
+        std::vector<std::string> request = read_request(fd);
+        debug("Request content:\n" + Utility::implode(request, "\n"));
+        // Check for GET request
+        for (std::string line : request) {
+          // Explode the line into words
+          std::vector<std::string> words = Utility::explode(line, " ");
+          // Check for "GET" request
+          if (words.size() > 0 && Utility::strtolower(words[0]) == "get") {
+            // Determine htdocs relative request path
+            std::string _rpath{};
+            if (words.size() == 1 || words[1] == "/")
+              // If there was no path provided, or the root was requested, serve
+              // the INDEX macro from htdocs
+              _rpath = INDEX;
+            else
+              // If a non-redirectable path was provided, use it
+              _rpath = words[1];
 
-          if (_rpath.find("/") == 0)
-            // Remove the slash at the beginning of the request path
-            _rpath = _rpath.substr(1);
+            if (_rpath.find("/") == 0)
+              // Remove the slash at the beginning of the request path
+              _rpath = _rpath.substr(1);
 
-          try {
-            // Determine absolute request path
-            _rpath = _htdocs + "/" + _rpath;
-            debug("Request for absolute path: " + _rpath);
-            SandboxPath path{_rpath};
-            debug("Request for file: " + path.get());
-            // Attempt to dump the file to the client
-            dump_file(fd, path);
-          } catch (const std::exception& e) {
-            access_denied(fd);
-            debug(e.what());
+            try {
+              // Determine absolute request path
+              _rpath = _htdocs + "/" + _rpath;
+              debug("Request for absolute path: " + _rpath);
+              SandboxPath path{_rpath};
+              debug("Request for file: " + path.get());
+              // Attempt to dump the file to the client
+              dump_file(fd, path);
+            } catch (const std::exception& e) {
+              access_denied(fd);
+              debug(e.what());
+            }
           }
         }
+      } catch (const std::exception& e) {
+        debug(e.what());
       }
-    } catch (const std::exception& e) {
-      debug(e.what());
     }
-  }
 
-  // Close the file descriptor
-  shutdown(fd, SHUT_RDWR);
-  close(fd);
-  // Lock the mutex while modifying _clients
-  std::unique_lock<std::mutex> lock(_mutex);
-  // Remove the file descriptor from the client set
-  debug("removing fd:" + std::to_string(fd));
-  auto it = _clients.find(fd);
-  if (it != _clients.end())
-    _clients.erase(it);
-  // Unlock the mutex
-  lock.unlock();
+    // Close the file descriptor
+    shutdown(fd, SHUT_RDWR);
+    close(fd);
+    // Remove the file descriptor from the client set
+    debug("disconnect fd:" + std::to_string(fd));
+  }
 }
 
 /**
@@ -431,38 +410,6 @@ std::vector<std::string> read_request(int fd) {
 /**
  * @brief Ready
  *
- * Calls select(...) for listening socket and all clients in order to stall for
- * incoming connections or data
- */
-void ready() {
-  // Setup storage to determine if anything is readable
-  fd_set rfds;
-  FD_ZERO(&rfds);
-  if (valid(_sockfd))
-    FD_SET(_sockfd, &rfds);
-  // Add each client to the fd set
-  int max = _sockfd;
-  std::unique_lock<std::mutex> lock(_mutex);
-  for (int clifd : _clients) {
-    // Ensure a valid clifd
-    if (valid(clifd)) {
-      FD_SET(clifd, &rfds);
-      // Keep up with the maximum fd
-      if (clifd > max)
-        max = clifd;
-    }
-  }
-  lock.unlock();
-  // Declare a maximum timeout
-  struct timeval timeout{INT_MAX, 0};
-  // Use select to determine status
-  select(max + 1, &rfds, NULL, NULL, &timeout);
-  // throw std::runtime_error{"could not select(...)"};
-}
-
-/**
- * @brief Ready
- *
  * Determines if a specific file descriptor is ready for reading
  *
  * @param  fd  The file descriptor to test
@@ -473,15 +420,9 @@ bool ready(int fd, int tout) {
   // Setup storage to determine if fd is readable
   fd_set rfds;
   FD_ZERO(&rfds);
-  // Lock to prevent any external race conditions
-  std::unique_lock<std::mutex> lock(_mutex, std::defer_lock);
-  bool locked = lock.try_lock();
   // Ensure a valid clifd
   if (valid(fd))
     FD_SET(fd, &rfds);
-  // Unlock the mutex
-  if (locked == true)
-    lock.unlock();
   // Declare an immediate timeout
   struct timeval timeout{tout, 0};
   // Use select to determine status
