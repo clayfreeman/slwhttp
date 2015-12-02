@@ -328,7 +328,8 @@ void process_request(int fd) {
       // Check for GET request
       for (std::string line : request) {
         // Explode the line into words
-        std::vector<std::string> words = Utility::explode(line, " ");
+        std::vector<std::string> words = Utility::explode(
+          Utility::trim(line), " ");
         // Check for "GET" request
         if (words.size() > 0 && Utility::strtolower(words[0]) == "get") {
           // Determine htdocs relative request path
@@ -344,9 +345,10 @@ void process_request(int fd) {
           try {
             // Determine absolute request path
             _rpath = _htdocs + "/" + _rpath;
-            debug("Request for absolute path: " + _rpath);
+            debug("Request for raw absolute path: " + _rpath);
             SandboxPath path{_rpath};
-            debug("Request for file: " + path.get());
+            debug("Sandboxed request for canonicalized absolute path: " +
+              path.get());
             // Attempt to dump the file to the client
             dump_file(fd, path);
           } catch (const std::exception& e) {
