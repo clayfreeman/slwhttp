@@ -248,16 +248,16 @@ void dump_file(int fd, const SandboxPath& path) {
         "Content-Length: " + std::to_string(fsize) + "\r\n"
         "\r\n"
       };
-      write(fd, response.c_str(), response.length());
-      fsync(fd);
 
-      // Dump the file contents to the client
+      // Dump the response to the client
+      write(fd, response.c_str(), response.length());
       sendfile(fd, file, 0, fsize);
-      fsync(fd);
     }
   }
   // Close the source file
   close(file);
+  // Synchronize the output
+  fsync(fd);
 }
 
 /**
