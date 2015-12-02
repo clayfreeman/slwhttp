@@ -473,7 +473,8 @@ bool ready(int fd, int tout) {
   fd_set rfds;
   FD_ZERO(&rfds);
   // Lock to prevent any external race conditions
-  std::unique_lock<std::mutex> lock(_mutex);
+  std::unique_lock<std::mutex> lock(_mutex, std::defer_lock);
+  bool locked = lock.try_lock();
   // Ensure a valid clifd
   if (valid(fd))
     FD_SET(fd, &rfds);
@@ -482,7 +483,8 @@ bool ready(int fd, int tout) {
   // Use select to determine status
   select(fd + 1, &rfds, NULL, NULL, &timeout);
   // Unlock the mutex
-  lock.unlock();
+  if (locked == true)
+    lock.unlock();
   // throw std::runtime_error{"could not select(" + std::to_string(fd) + ")"};
   return FD_ISSET(fd, &rfds);
 }
