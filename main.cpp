@@ -49,7 +49,7 @@ inline void              debug          (const std::string& str);
 void                     dump_file      (int fd, const SandboxPath& path);
 void                     prepare_socket ();
 void                     print_help     (bool should_exit = true);
-void                     process_request(const int& fd);
+void                     process_request(int fd);
 std::vector<std::string> read_request   (int fd);
 void                     ready          ();
 bool                     ready          (int fd, int tout = 0);
@@ -196,7 +196,7 @@ void begin() {
     // Lock the mutex to reserve access to _clients
     std::unique_lock<std::mutex> lock(_mutex);
     // Check each client for available data
-    for (const int& clifd : _clients) {
+    for (int clifd : _clients) {
       // Check if data was sent by the client
       if (ready(clifd))
         // Process the request
@@ -377,7 +377,7 @@ void process_request(const int& fd) {
   shutdown(fd, SHUT_RDWR);
   close(fd);
   // Remove the file descriptor from the client set
-  _clients.erase(fd);
+  _clients.erase(_clients.find(fd));
   // Unlock the mutex
   lock.unlock();
 }
