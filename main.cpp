@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <iostream>
+#include <mutex>
 #include <netinet/ip.h>
 #include <pwd.h>
 #include <stdexcept>
@@ -58,6 +59,7 @@ inline bool              valid          (int fd);
 // Declare storage for global configuration state
 bool            _debug = false;
 std::string    _htdocs = "";
+std::mutex      _mutex = {};
 std::string      _path = "";
 int              _port = 80;
 int            _sockfd = -1;
@@ -203,9 +205,11 @@ void begin() {
  */
 inline void debug(const std::string& str) {
   // Check if debug mode is enabled
-  if (_debug == true)
+  if (_debug == true) {
+    std::unique_lock<std::mutex> lock{_mutex};
     // Print the given message
     std::cerr << "[DEBUG] " << str << std::endl;
+  }
 }
 
 /**
