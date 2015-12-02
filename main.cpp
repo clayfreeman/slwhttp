@@ -45,7 +45,7 @@ inline void              debug          (const std::string& str);
 void                     print_help     (bool should_exit = true);
 void                     process_request(const int& fd);
 void                     ready          ();
-bool                     ready          (int fd);
+bool                     ready          (int fd, int timeout = 0);
 
 // Declare storage for global configuration state
 bool            _debug = false;
@@ -263,41 +263,47 @@ void print_help(bool should_exit) {
 void process_request(const int& fd) {
   // Prepare storage for the request headers
   std::string request{};
-
-  // Loop until empty line as per HTTP protocol
-  while (request.find("\n\n") == std::string::npos) {
-    // Prepare a buffer for the incoming data
-    char* buffer = (char*)calloc(8192, sizeof(char));
-    // Read up to (8K - 1) bytes from the file descriptor to ensure a null
-    // character at the end to prevent overflow
-    read(fd, buffer, 8191);
-    // Copy the C-String into a std::string
-    request += buffer;
-    // Free the storage for the buffer ...
-    free(buffer);
-    // Remove carriage returns from the request
-    for (size_t loc = request.find('\r'); loc != std::string::npos;
-        loc = request.find('\r', loc))
-      request.replace(loc, 1, "");
-  }
-
-  // Log incoming request to debug
-  debug("incoming request:\n\n" + request);
-  // Create vector that holds each line
-  std::vector<std::string> lines = Utility::explode(request, "\n");
-  // Check for GET request
-  for (std::string line : lines) {
-    // Explode the line into words
-    std::vector<std::string> words = Utility::explode(line, " ");
-    // Check for "GET" request
-    if (words.size() > 1) {
-      Utility::strtolower(words[0]);
-      if (words[0] == "get") {
-        // Extract the requested path
-        SandboxPath path{_htdocs + "/" + words[1]};
-        debug("GET " + path.get());
+  // Ensure the client has sent some data within three seconds
+  if (ready(fd, 3)) {
+    // Loop until empty line as per HTTP protocol
+    while (request.find("\n\n") == std::string::npos) {
+      // Prepare a buffer for the incoming data
+      char* buffer = (char*)calloc(8192, sizeof(char));
+      // Read up to (8K - 1) bytes from the file descriptor to ensure a null
+      // character at the end to prevent overflow
+      read(fd, buffer, 8191);
+      // Copy the C-String into a std::string
+      request += buffer;
+      // Free the storage for the buffer ...
+      free(buffer);
+      // Remove carriage returns from the request
+      for (size_t loc = request.find('\r'); loc != std::string::npos;
+          loc = request.find('\r', loc))
+        request.replace(loc, 1, "");
+    }
+    // Log incoming request to debug
+    debug("incoming request:\n\n" + request);
+    // Create vector that holds each line
+    std::vector<std::string> lines = Utility::explode(request, "\n");
+    // Check for GET request
+    for (std::string line : lines) {
+      // Explode the line into words
+      std::vector<std::string> words = Utility::explode(line, " ");
+      // Check for "GET" request
+      if (words.size() > 1) {
+        Utility::strtolower(words[0]);
+        if (words[0] == "get") {
+          // Extract the requested path
+          SandboxPath path{_htdocs + "/" + words[1]};
+          debug("GET " + path.get());
+        }
       }
     }
+  }
+  else {
+    // Send "HTTP/1.0 408 Request timeout" upon the three second timeout
+    const std::string response{"HTTP/1.0 408 Request timeout\r\n\r\n"};
+    write(fd, response.c_str(), response.length());
   }
 
   // Lock the mutex while modifying _clients
@@ -348,7 +354,7 @@ void ready() {
  *
  * @return            true if ready, otherwise false
  */
-bool ready(int fd) {
+bool ready(int fd, int timeout) {
   // Setup storage to determine if fd is readable
   fd_set rfds;
   FD_ZERO(&rfds);
