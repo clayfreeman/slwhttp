@@ -294,7 +294,7 @@ void prepare_socket() {
   }
   else {
     // Listen with a backlog of 1
-    if (listen(_sockfd, 8) < 0) {
+    if (listen(_sockfd, 64) < 0) {
       close(_sockfd);
       throw std::runtime_error{"failed to listen on socket"};
     }
