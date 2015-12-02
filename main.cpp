@@ -312,7 +312,7 @@ void process_request(const int& fd) {
               "HTTP/1.0 200 OK\r\n"
               "Content-Type: application/octet-stream\r\n"
               "Content-Length: " + std::to_string(end - beg) + "\r\n"
-              "\r\n\r\n"
+              "\r\n"
             };
             write(fd, response.c_str(), response.length());
             fsync(fd);
