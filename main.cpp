@@ -321,7 +321,7 @@ void print_help(bool should_exit) {
 void process_request(int fd) {
   // Ensure that the provided fd is valid
   if (valid(fd)) {
-    debug("process_request(" + std::to_string(clifd) + ")");
+    debug("process_request(" + std::to_string(fd) + ")");
     // Ensure the client has sent some data within three seconds
     if (ready(fd, 3)) {
       // Read the request headers provided by the client
