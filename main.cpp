@@ -251,9 +251,9 @@ void dump_file(int fd, const SandboxPath& path) {
 
       // Dump the response to the client
       if (write(fd, response.c_str(), response.length()) < 0)
-        perror("");
+        perror("WRITE ERROR");
       if (sendfile(fd, file, 0, fsize) < 0)
-        perror("");
+        perror("WRITE ERROR");
     }
   }
   // Close the source file
