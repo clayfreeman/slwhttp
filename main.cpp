@@ -68,8 +68,8 @@ int main(int argc, const char* argv[]) {
   assert(File::realPath("/bin/.")  == "/bin");
   assert(File::realPath("/bin/..") == "/");
 
-  // // Ignore SIGPIPE
-  // signal(SIGPIPE, SIG_IGN);
+  // Ignore SIGPIPE (not needed, just a precaution)
+  signal(SIGPIPE, SIG_IGN);
 
   // Gather a vector of all arguments from argv[]
   if (argc > 0) _path = argv[0];
@@ -157,7 +157,6 @@ void access_denied(int fd) {
     };
     // Write response to client
     write(fd, response.c_str(), response.length());
-    fsync(fd);
   }
 }
 
@@ -170,13 +169,13 @@ void begin() {
   // Prepare the listening socket in order to accept connections
   prepare_socket();
 
-  // // Set the user and group ID to "nobody"
-  // struct passwd* entry = getpwnam("nobody");
-  // if (entry == NULL)
-  //   throw std::runtime_error{"could not find UID/GID for user \"nobody\""};
-  // if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
-  //   throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
-  //     "(not running as root?)"};
+  // Set the user and group ID to "slwhttp"
+  struct passwd* entry = getpwnam("slwhttp");
+  if (entry == NULL)
+    throw std::runtime_error{"could not find UID/GID for user \"slwhttp\""};
+  if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
+    throw std::runtime_error{"failed to set UID/GID to user \"slwhttp\" "
+      "(not running as root?)"};
 
   // Loop indefinitely to accept and process clients
   while (valid(_sockfd)) {
@@ -223,7 +222,7 @@ void dump_file(int fd, const SandboxPath& path) {
     // Open file for reading
     int file = open(path.get().c_str(), O_RDONLY);
     // Ensure the file was successfully opened and is in good condition
-    if (file >= 0) {
+    if (valid(file)) {
       // Calculate the file size
       off_t fsize = lseek(file, 0, SEEK_END);
       if (fsize >= 0 && lseek(file, 0, SEEK_SET) >= 0) {
@@ -243,8 +242,6 @@ void dump_file(int fd, const SandboxPath& path) {
     }
     // Close the source file
     close(file);
-    // Synchronize the output
-    fsync(fd);
   }
 }
 
@@ -325,30 +322,28 @@ void process_request(int fd) {
     // Ensure the client has sent some data within three seconds
     if (ready(fd, 3)) {
       // Read the request headers provided by the client
-      try {
-        std::vector<std::string> request = read_request(fd);
-        std::string content = Utility::implode(request, "\n  ");
-        debug("Request content:\n  " + Utility::trim(content));
-        // Check for GET request
-        for (std::string line : request) {
-          // Explode the line into words
-          std::vector<std::string> words = Utility::explode(line, " ");
-          // Check for "GET" request
-          if (words.size() > 0 && Utility::strtolower(words[0]) == "get") {
-            // Determine htdocs relative request path
-            std::string _rpath{};
-            if (words.size() == 1 || words[1] == "/")
-              // If there was no path provided, or the root was requested, serve
-              // the INDEX macro from htdocs
-              _rpath = INDEX;
-            else
-              // If a non-redirectable path was provided, use it
-              _rpath = words[1];
+      std::vector<std::string> request = read_request(fd);
+      std::string content = Utility::implode(request, "\n  ");
+      debug("Request content:\n  " + Utility::trim(content));
+      // Check for GET request
+      for (std::string line : request) {
+        // Explode the line into words
+        std::vector<std::string> words = Utility::explode(line, " ");
+        // Check for "GET" request
+        if (words.size() > 0 && Utility::strtolower(words[0]) == "get") {
+          // Determine htdocs relative request path
+          std::string _rpath{};
+          if (words.size() == 1 || words[1] == "/")
+            // If there was no path provided, or the root was requested, serve
+            // the INDEX macro from htdocs
+            _rpath = INDEX;
+          else
+            // If a non-redirectable path was provided, use it
+            _rpath = words[1];
 
-            if (_rpath.find("/") == 0)
-              // Remove the slash at the beginning of the request path
-              _rpath = _rpath.substr(1);
-
+          if (_rpath.find("/") == 0) {
+            // Remove the slash at the beginning of the request path
+            _rpath = _rpath.substr(1);
             try {
               // Determine absolute request path
               _rpath = _htdocs + "/" + _rpath;
@@ -362,13 +357,15 @@ void process_request(int fd) {
               debug(e.what());
             }
           }
+          else
+            // Invalid path; request paths must begin with "/"
+            access_denied(fd);
         }
-      } catch (const std::exception& e) {
-        debug(e.what());
       }
     }
 
     // Close the file descriptor
+    fsync(fd);
     shutdown(fd, SHUT_RDWR);
     close(fd);
     // Remove the file descriptor from the client set
@@ -389,7 +386,7 @@ std::vector<std::string> read_request(int fd) {
   std::vector<std::string> request{};
   // Loop until empty line as per HTTP protocol
   while (request.size() == 0 || request.back().length() > 0) {
-    if (ready(fd, 3)) {
+    if (valid(fd) && ready(fd, 3)) {
       // Prepare a buffer for the incoming data
       char* buffer = (char*)calloc(8192, sizeof(char));
       // Read up to (8K - 1) bytes from the file descriptor to ensure a null
@@ -428,7 +425,6 @@ bool ready(int fd, int tout) {
   struct timeval timeout{tout, 0};
   // Use select to determine status
   select(fd + 1, &rfds, NULL, NULL, &timeout);
-  // throw std::runtime_error{"could not select(" + std::to_string(fd) + ")"};
   return FD_ISSET(fd, &rfds);
 }
 
