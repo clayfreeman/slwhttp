@@ -444,7 +444,6 @@ void ready() {
         max = clifd;
     }
   }
-  lock.unlock();
   // Declare a maximum timeout
   struct timeval timeout{INT_MAX, 0};
   // Use select to determine status
@@ -452,6 +451,7 @@ void ready() {
     perror("");
     throw std::runtime_error{"could not select(...)"};
   }
+  lock.unlock();
 }
 
 /**
