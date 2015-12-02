@@ -56,6 +56,7 @@ void                     process_request(int fd);
 std::vector<std::string> read_request   (int fd);
 void                     ready          ();
 bool                     ready          (int fd, int tout = 0);
+inline bool              valid          (int fd);
 
 // Declare storage for global configuration state
 bool            _debug = false;
@@ -236,7 +237,7 @@ inline void debug(const std::string& str) {
  */
 void dump_file(int fd, const SandboxPath& path) {
   // Ensure the output fd is valid
-  if (fcntl(fd, F_GETFD) != -1 || errno != EBADF) {
+  if (valid(fd)) {
     // Open file for reading
     int file = open(path.get().c_str(), O_RDONLY);
     // Ensure the file was successfully opened and is in good condition
@@ -436,14 +437,14 @@ void ready() {
   // Setup storage to determine if anything is readable
   fd_set rfds;
   FD_ZERO(&rfds);
-  if (fcntl(_sockfd, F_GETFD) != -1 || errno != EBADF)
+  if (valid(_sockfd))
     FD_SET(_sockfd, &rfds);
   // Add each client to the fd set
   int max = _sockfd;
   std::unique_lock<std::mutex> lock(_mutex);
   for (int clifd : _clients) {
     // Ensure a valid clifd
-    if (fcntl(clifd, F_GETFD) != -1 || errno != EBADF) {
+    if (valid(clifd)) {
       FD_SET(clifd, &rfds);
       // Keep up with the maximum fd
       if (clifd > max)
@@ -471,13 +472,30 @@ bool ready(int fd, int tout) {
   // Setup storage to determine if fd is readable
   fd_set rfds;
   FD_ZERO(&rfds);
+  // Lock to prevent any external race conditions
+  std::unique_lock<std::mutex> lock(_mutex);
   // Ensure a valid clifd
-  if (fcntl(fd, F_GETFD) != -1 || errno != EBADF)
+  if (valid(fd))
     FD_SET(fd, &rfds);
   // Declare an immediate timeout
   struct timeval timeout{tout, 0};
   // Use select to determine status
   select(fd + 1, &rfds, NULL, NULL, &timeout);
+  // Unlock the mutex
+  lock.unlock();
   // throw std::runtime_error{"could not select(" + std::to_string(fd) + ")"};
   return FD_ISSET(fd, &rfds);
+}
+
+/**
+ * @brief Valid
+ *
+ * Determines if a specific file descriptor is valid
+ *
+ * @param  fd  The file descriptor to test
+ *
+ * @return     true if valid, otherwise false
+ */
+inline bool valid(int fd) {
+  return (fcntl(fd, F_GETFD) != -1 || errno != EBADF);
 }
