@@ -327,8 +327,8 @@ void process_request(int fd) {
     if (ready(fd, 3)) {
       // Read the request headers provided by the client
       std::vector<std::string> request = read_request(fd);
-      std::string content = Utility::implode(request, "\n  ");
-      debug("request content:\n  " + content);
+      std::string content = Utility::implode(request, "\n    ");
+      debug("request content:\n -> " + content);
       // Check for GET request
       for (std::string line : request) {
         // Explode the line into words
