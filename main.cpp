@@ -291,8 +291,7 @@ void process_request(const int& fd) {
       std::vector<std::string> words = Utility::explode(line, " ");
       // Check for "GET" request
       if (words.size() > 1) {
-        Utility::strtolower(words[0]);
-        if (words[0] == "get") {
+        if (Utility::strtolower(words[0]) == "get") {
           // Extract the requested path
           SandboxPath path{_htdocs + "/" + words[1]};
           debug("GET " + path.get());
