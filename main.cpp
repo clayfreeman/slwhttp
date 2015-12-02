@@ -34,13 +34,13 @@
 
 #include "ext/File/File.hpp"
 #include "ext/Utility/Utility.hpp"
+#include "include/SandboxPath.hpp"
 
 // Set the default index path (from htdocs directory)
 #define INDEX "/index.html"
 
 // Declare function prototypes
 void                     begin          ();
-bool                     check_jail     (std::string path);
 inline void              debug          (const std::string& str);
 void                     print_help     (bool should_exit = true);
 void                     process_request(const int& fd);
@@ -55,33 +55,6 @@ std::mutex      _mutex = {};
 std::string      _path = "";
 int              _port = 80;
 int            _sockfd = -1;
-
-// Declare classes
-class SandboxPath {
-  private:
-    std::string rpath{};
-  public:
-    SandboxPath(const std::string& path) {
-      std::string _rpath = File::realPath(path);
-      // Check that the resulting path is within the sandbox and has valid
-      // permissions
-      if (check_jail(_rpath)) {
-        this->rpath = _rpath;
-        debug("check_jail(\"" + _rpath + "\") = true");
-      }
-      else {
-        this->rpath = _htdocs + INDEX;
-        debug("check_jail(\"" + _rpath + "\") = false");
-        debug("overriding rpath to \"" + this->rpath + "\" ...");
-      }
-    }
-    const std::string& get() const {
-      if (!File::isFile(this->rpath) || !File::readable(this->rpath))
-        throw std::runtime_error{"\"" + this->rpath + "\" is not a readable " +
-          "file"};
-      return this->rpath;
-    }
-};
 
 int main(int argc, const char* argv[]) {
   // General assertions for reliability
@@ -139,6 +112,9 @@ int main(int argc, const char* argv[]) {
     std::cerr << "Error: htdocs directory not specified" << std::endl;
     exit(EXIT_FAILURE);
   }
+
+  // Set the jail path for SandboxPath objects
+  SandboxPath::setJail(_htdocs);
 
   // Begin listening for connections
   try {
@@ -235,28 +211,6 @@ void begin() {
 }
 
 /**
- * @brief Check Jail
- *
- * Checks that the given path is a child of the sandbox directory
- *
- * @param  path  The input string
- *
- * @return       true if valid, otherwise false
- */
-bool check_jail(std::string path) {
-  bool valid = false;
-  // Verify length constraints
-  if (path.length() > _htdocs.length() + 1) {
-    // Trim the string to the valid length
-    path = path.substr(0, _htdocs.length() + 1);
-    // Verify that the most significant path components match the sandbox
-    if (path == _htdocs + "/")
-      valid = true;
-  }
-  return valid;
-}
-
-/**
  * @brief Debug
  *
  * Prints debug information if debug mode is enabled
@@ -336,8 +290,8 @@ void process_request(const int& fd) {
       Utility::strtolower(words[0]);
       if (words[0] == "get") {
         // Extract the requested path
-        std::string path = words[1];
-        debug("GET " + path);
+        SandboxPath path{_htdocs + "/" + words[1]};
+        debug("GET " + path.get());
       }
     }
   }
