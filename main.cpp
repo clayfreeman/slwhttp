@@ -304,6 +304,7 @@ void process_request(const int& fd) {
     // Send "HTTP/1.0 408 Request timeout" upon the three second timeout
     const std::string response{"HTTP/1.0 408 Request timeout\r\n\r\n"};
     write(fd, response.c_str(), response.length());
+    fsync(fd);
   }
 
   // Lock the mutex while modifying _clients
