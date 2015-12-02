@@ -479,13 +479,13 @@ bool ready(int fd, int tout) {
   // Ensure a valid clifd
   if (valid(fd))
     FD_SET(fd, &rfds);
+  // Unlock the mutex
+  if (locked == true)
+    lock.unlock();
   // Declare an immediate timeout
   struct timeval timeout{tout, 0};
   // Use select to determine status
   select(fd + 1, &rfds, NULL, NULL, &timeout);
-  // Unlock the mutex
-  if (locked == true)
-    lock.unlock();
   // throw std::runtime_error{"could not select(" + std::to_string(fd) + ")"};
   return FD_ISSET(fd, &rfds);
 }
