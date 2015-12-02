@@ -342,7 +342,8 @@ void process_request(const int& fd) {
         if (words.size() > 1) {
           if (Utility::strtolower(words[0]) == "get") {
             // Extract the requested path
-            SandboxPath path{_htdocs + "/" + words[1]};
+            SandboxPath path{_htdocs + "/" + (words[1] != "/" ? words[1] :
+              "/index.html")};
             debug("Fetch path: " + path.get());
             // Attempt to dump the file to the client
             try {
