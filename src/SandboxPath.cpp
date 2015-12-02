@@ -33,7 +33,7 @@ SandboxPath::SandboxPath(const std::string& path) {
   if (SandboxPath::checkJail(_rpath))
     this->rpath = _rpath;
   else
-    throw std::runtime_error{"checkJail(...) = false"};
+    throw std::runtime_error{"checkJail(\"" + _rpath + "\") = false"};
 }
 
 /**
