@@ -172,13 +172,13 @@ void begin() {
   // Prepare the listening socket in order to accept connections
   prepare_socket();
 
-  // Set the user and group ID to "nobody"
-  struct passwd* entry = getpwnam("nobody");
-  if (entry == NULL)
-    throw std::runtime_error{"could not find UID/GID for user \"nobody\""};
-  if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
-    throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
-      "(not running as root?)"};
+  // // Set the user and group ID to "nobody"
+  // struct passwd* entry = getpwnam("nobody");
+  // if (entry == NULL)
+  //   throw std::runtime_error{"could not find UID/GID for user \"nobody\""};
+  // if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
+  //   throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
+  //     "(not running as root?)"};
 
   // Loop indefinitely to accept and process clients
   while (true) {
