@@ -1,0 +1,6 @@
+[submodule "ext/Utility"]
+	path = ext/Utility
+	url = https://github.com/clayfreeman/Utility.git
+[submodule "ext/File"]
+	path = ext/File
+	url = https://github.com/clayfreeman/File.git

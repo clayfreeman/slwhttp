@@ -10,10 +10,8 @@
  * @date       November 30, 2015
  */
 
-#include <algorithm>    // std::transform(...)
 #include <arpa/inet.h>  // inet_addr(...)
 #include <cassert>      // assert(...)
-#include <cctype>       // tolower(...)
 #include <cerrno>       // perror(...)
 #include <climits>      // realpath(...), PATH_MAX
 #include <cstdio>       // perror(...)
@@ -28,12 +26,14 @@
 #include <stdexcept>    // std::runtime_error
 #include <string>       // std::string
 #include <sys/socket.h> // bind(...), listen(...)
-#include <sys/stat.h>   // stat(...)
 #include <sys/time.h>   // timeval
 #include <sys/types.h>  // stat(...)
 #include <thread>       // std::thread
 #include <unistd.h>     // access(...), stat(...)
 #include <vector>       // std::vector<...>
+
+#include "ext/File/File.hpp"
+#include "ext/Utility/Utility.hpp"
 
 // Set the default index path (from htdocs directory)
 #define INDEX "/index.html"
@@ -42,18 +42,10 @@
 void                     begin          ();
 bool                     check_jail     (std::string path);
 inline void              debug          (const std::string& str);
-inline bool              directory      (const std::string& path);
-inline bool              executable     (const std::string& path);
-std::vector<std::string> explode        (const std::string& s,
-                                         const std::string& d);
-inline bool              file           (const std::string& path);
-inline void              lowercase      (std::string& str);
 void                     print_help     (bool should_exit = true);
 void                     process_request(const int& fd);
-inline bool              readable       (const std::string& path);
 void                     ready          ();
 bool                     ready          (int fd);
-std::string              real_path      (const std::string& path);
 
 // Declare storage for global configuration state
 bool            _debug = false;
@@ -70,7 +62,7 @@ class SandboxPath {
     std::string rpath{};
   public:
     SandboxPath(const std::string& path) {
-      std::string _rpath = real_path(path);
+      std::string _rpath = File::realPath(path);
       // Check that the resulting path is within the sandbox and has valid
       // permissions
       if (check_jail(_rpath)) {
@@ -84,7 +76,7 @@ class SandboxPath {
       }
     }
     const std::string& get() const {
-      if (!file(this->rpath) || !readable(this->rpath))
+      if (!File::isFile(this->rpath) || !File::readable(this->rpath))
         throw std::runtime_error{"\"" + this->rpath + "\" is not a readable " +
           "file"};
       return this->rpath;
@@ -93,9 +85,9 @@ class SandboxPath {
 
 int main(int argc, const char* argv[]) {
   // General assertions for reliability
-  assert(real_path("/bin")    == "/bin");
-  assert(real_path("/bin/.")  == "/bin");
-  assert(real_path("/bin/..") == "/");
+  assert(File::realPath("/bin")    == "/bin");
+  assert(File::realPath("/bin/.")  == "/bin");
+  assert(File::realPath("/bin/..") == "/");
 
   // Gather a vector of all arguments from argv[]
   if (argc > 0) _path = argv[0];
@@ -108,7 +100,7 @@ int main(int argc, const char* argv[]) {
     // Copy the argument from the arguments vector
     std::string option{*it};
     // Lowercase the text in the option variable
-    lowercase(option);
+    Utility::strtolower(option);
     // Check if the given item is a valid option
     if (option == "--debug")
       _debug = true;
@@ -130,8 +122,8 @@ int main(int argc, const char* argv[]) {
       }
     }
     else if (_htdocs.length() == 0) {
-      const std::string rpath = real_path(*it);
-      if (directory(rpath) && executable(rpath)) {
+      const std::string rpath = File::realPath(*it);
+      if (File::isDirectory(rpath) && File::executable(rpath)) {
         _htdocs = rpath;
         debug("_htdocs = " + _htdocs);
       }
@@ -279,86 +271,6 @@ inline void debug(const std::string& str) {
 }
 
 /**
- * @brief Directory
- *
- * Determines if a path is a directory
- *
- * @param  path       The input path
- *
- * @return            true if directory, otherwise false
- */
-inline bool directory(const std::string& path) {
-  struct stat buffer;
-  return (stat(path.c_str(), &buffer) == 0 && buffer.st_mode & S_IFDIR);
-}
-
-/**
- * @brief Executable
- *
- * Determines if a path is executable
- *
- * @param  path       The input path
- *
- * @return            true if executable, otherwise false
- */
-inline bool executable(const std::string& path) {
-  return (access(path.c_str(), X_OK) == 0);
-}
-
-/**
- * @brief Explode
- *
- * Explodes a std::string by a delimiter to a std::vector of std::string
- *
- * @param s The std::string to explode
- * @param d The delimiter to explode the std::string
- *
- * @return std::vector of std::string
- */
-std::vector<std::string> explode(const std::string& s, const std::string& d) {
-  size_t lpos = 0;
-  std::vector<std::string> result;
-
-  for (size_t cpos = 0; (cpos = s.find(d, lpos)) != std::string::npos;
-      lpos = cpos + d.length())
-    // Add each item separated by a delimiter
-    result.push_back(s.substr(lpos, cpos - lpos));
-  // Add the last substr with no delimiter
-  result.push_back(s.substr(lpos));
-
-  return result;
-}
-
-/**
- * @brief File
- *
- * Determines if a path is a file
- *
- * @param  path       The input path
- *
- * @return            true if file, otherwise false
- */
-inline bool file(const std::string& path) {
-  struct stat buffer;
-  return (stat(path.c_str(), &buffer) == 0 && buffer.st_mode & S_IFREG);
-}
-
-/**
- * @brief Lowercase
- *
- * Transforms a string to contain lowercase-only alphabet characters
- *
- * @param  str  The input string
- *
- * @return      std::string containing the lowercase text
- */
-inline void lowercase(std::string& str) {
-  // Transform the provided string using the std::transform(...) and
-  // tolower(...) functions
-  std::transform(str.begin(), str.end(), str.begin(), ::tolower);
-}
-
-/**
  * @brief Print Help
  *
  * Prints help information and optionally calls exit(...)
@@ -414,17 +326,19 @@ void process_request(const int& fd) {
   // Log incoming request to debug
   debug("incoming request:\n\n" + request);
   // Create vector that holds each line
-  std::vector<std::string> lines = explode(request, "\r\n");
+  std::vector<std::string> lines = Utility::explode(request, "\r\n");
   // Check for GET request
   for (std::string line : lines) {
     // Explode the line into words
-    std::vector<std::string> words = explode(line, " ");
-    lowercase(words.front());
+    std::vector<std::string> words = Utility::explode(line, " ");
     // Check for "GET" request
-    if (words.size() > 1 && words.front() == "get") {
-      // Extract the requested path
-      std::string path = words[1];
-      debug("GET " + path);
+    if (words.size() > 1) {
+      Utility::strtolower(words[0]);
+      if (words[0] == "get") {
+        // Extract the requested path
+        std::string path = words[1];
+        debug("GET " + path);
+      }
     }
   }
 
@@ -436,20 +350,6 @@ void process_request(const int& fd) {
   _clients.erase(fd);
   // Unlock the mutex
   lock.unlock();
-}
-
-/**
- * @brief Readable
- *
- * Determines if a path is readable
- *
- * @param  path       The input path
- * @param  directory  Whether or not to test traversability (execute bit)
- *
- * @return            true if readable, otherwise false
- */
-inline bool readable(const std::string& path) {
-  return (access(path.c_str(), R_OK) == 0);
 }
 
 /**
@@ -500,37 +400,4 @@ bool ready(int fd) {
   if (select(fd + 1, &rfds, NULL, NULL, &timeout) < 0)
     throw std::runtime_error{"could not select(" + std::to_string(fd) + ")"};
   return FD_ISSET(fd, &rfds);
-}
-
-/**
- * @brief Real Path
- *
- * Fetches the absolute path for a given input path
- *
- * @param  path  The input path
- *
- * @return       std::string containing the absolute path or an empty on failure
- */
-std::string real_path(const std::string& path) {
-  // Create storage for the resulting path
-  std::string return_value{};
-  // Fetch the real path for the provided path
-  char* rpath = realpath(path.c_str(), NULL);
-  debug("realpath(\"" + path + "\", NULL) = " +
-    (rpath == NULL ? "NULL" : std::string{rpath}));
-  // Check if an error occurred
-  if (rpath == NULL) {
-    // Print the error to the console
-    if (_debug == true)
-      perror(("[DEBUG] " + path).c_str());
-  }
-  else {
-    // No error occurred; build the return value
-    return_value = std::string{rpath};
-    // Free the provided resource from realpath(...)
-    free(rpath);
-  }
-  // Null the rpath variable to prevent further use
-  rpath = NULL;
-  return return_value;
 }
