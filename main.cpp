@@ -379,7 +379,7 @@ void process_request(int fd) {
 std::vector<std::string> read_request(int fd) {
   std::vector<std::string> request{};
   // Loop until empty line as per HTTP protocol
-  while (request.size() == 0 || request.rbegin()->length() > 0) {
+  while (request.size() == 0 || (request.rbegin() + 1)->length() > 0) {
     if (valid(fd) && ready(fd, 3)) {
       // Prepare a buffer for the incoming data
       char* buffer = (char*)calloc(8192, sizeof(char));
