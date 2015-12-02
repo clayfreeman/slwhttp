@@ -10,28 +10,26 @@
  * @date       November 30, 2015
  */
 
-#include <arpa/inet.h>  // inet_addr(...)
-#include <cassert>      // assert(...)
-#include <cerrno>       // perror(...)
-#include <climits>      // realpath(...), PATH_MAX
-#include <cstdio>       // perror(...)
-#include <cstdlib>      // free(...), realpath(...)
-#include <cstring>      // memset(...)
-#include <fcntl.h>      // fcntl(...)
-#include <fstream>      // std::ifstream
-#include <iostream>     // std::cerr, std::endl
-#include <mutex>        // std::mutex, std::unique_lock<...>
-#include <netinet/ip.h> // socket(...)
-#include <pwd.h>        // getpwnam(...)
-#include <set>          // std::set<...>
-#include <stdexcept>    // std::runtime_error
-#include <string>       // std::string
-#include <sys/socket.h> // bind(...), listen(...)
-#include <sys/time.h>   // timeval
-#include <sys/types.h>  // stat(...)
-#include <thread>       // std::thread
-#include <unistd.h>     // access(...), stat(...)
-#include <vector>       // std::vector<...>
+#include <cassert>
+#include <cerrno>
+#include <climits>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <iostream>
+#include <mutex>
+#include <netinet/ip.h>
+#include <pwd.h>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <thread>
+#include <unistd.h>
+#include <vector>
 
 #include "ext/File/File.hpp"
 #include "ext/Utility/Utility.hpp"
@@ -261,6 +259,11 @@ void dump_file(int fd, const SandboxPath& path) {
   }
 }
 
+/**
+ * @brief Prepare Socket
+ *
+ * Prepares the listening socket for accepting incoming connections
+ */
 void prepare_socket() {
   // Prepare the bind address information
   struct sockaddr_in serv_addr;
@@ -324,9 +327,7 @@ void print_help(bool should_exit) {
  * Takes a file descriptor and a std::string request and processes the text as
  * HTTP protocol
  *
- * @param  fd       The file descriptor of the associated client
- * @param  request  A std::string containing the request headers sent by the
- *                  connected client
+ * @param  fd  The file descriptor of the associated client
  */
 void process_request(const int& fd) {
   // Ensure the client has sent some data within three seconds
@@ -344,11 +345,12 @@ void process_request(const int& fd) {
           std::string _rpath{};
           if (words.size() == 1 || words[1] == "/")
             // If there was no path provided, or the root was requested, serve
-            // "index.html" from the htdocs directory
-            _rpath = "/index.html";
+            // the INDEX macro from htdocs
+            _rpath = INDEX;
           else
             // If a non-redirectable path was provided, use it
             _rpath = words[1];
+
           try {
             // Determine absolute request path
             SandboxPath path{_htdocs + "/" + _rpath};
@@ -444,7 +446,7 @@ void ready() {
  *
  * @param  fd  The file descriptor to test
  *
- * @return            true if ready, otherwise false
+ * @return     true if ready, otherwise false
  */
 bool ready(int fd, int tout) {
   // Setup storage to determine if fd is readable
