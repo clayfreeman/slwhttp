@@ -187,6 +187,7 @@ void begin() {
         debug("accepted client");
         // Add the client to the vector of clients
         std::unique_lock<std::mutex> lock(_mutex);
+        debug("inserting fd:" + std::to_string(clifd));
         _clients.insert(clifd);
         lock.unlock();
       }
@@ -377,7 +378,10 @@ void process_request(int fd) {
   // Lock the mutex while modifying _clients
   std::unique_lock<std::mutex> lock(_mutex);
   // Remove the file descriptor from the client set
-  _clients.erase(_clients.find(fd));
+  debug("removing fd:" + std::to_string(fd));
+  auto it = _clients.find(fd);
+  if (it != _clients.end())
+    _clients.erase(it);
   // Unlock the mutex
   lock.unlock();
 }
