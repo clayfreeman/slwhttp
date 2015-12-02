@@ -419,8 +419,7 @@ std::vector<std::string> read_request(int fd) {
       for (std::string line : Utility::explode(req, "\n"))
         request.push_back(line);
     }
-    else
-      throw std::runtime_error{"read timeout"};
+    else break;
   }
   return request;
 }
