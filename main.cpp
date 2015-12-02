@@ -345,10 +345,9 @@ void process_request(int fd) {
           try {
             // Determine absolute request path
             _rpath = _htdocs + "/" + _rpath;
-            debug("Request for raw absolute path: " + _rpath);
+            debug("Raw request for path: " + _rpath);
             SandboxPath path{_rpath};
-            debug("Sandboxed request for canonicalized absolute path: " +
-              path.get());
+            debug("Sandboxed request for real path: " + path.get());
             // Attempt to dump the file to the client
             dump_file(fd, path);
           } catch (const std::exception& e) {
@@ -380,7 +379,7 @@ void process_request(int fd) {
 std::vector<std::string> read_request(int fd) {
   std::vector<std::string> request{};
   // Loop until empty line as per HTTP protocol
-  while (request.size() == 0 || (request.rbegin() + 1)->length() > 0) {
+  while (request.size() == 0 || request.rbegin()->length() > 0) {
     if (valid(fd) && ready(fd, 3)) {
       // Prepare a buffer for the incoming data
       char* buffer = (char*)calloc(8192, sizeof(char));
