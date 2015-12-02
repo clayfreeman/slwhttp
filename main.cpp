@@ -86,8 +86,10 @@ int main(int argc, const char* argv[]) {
     // Lowercase the text in the option variable
     Utility::strtolower(option);
     // Check if the given item is a valid option
-    if (option == "--debug")
+    if (option == "--debug") {
       _debug = true;
+      debug("running in debug mode will reduce performance");
+    }
     else if (option == "--help")
       print_help();
     else if (option == "--port") {
@@ -119,9 +121,6 @@ int main(int argc, const char* argv[]) {
       }
     }
   }
-
-  // Warn the user of reduced performance in debug mode
-  debug("running in debug mode will reduce performance");
 
   // Check that the sandbox argument was specified
   if (_htdocs.length() == 0) {
