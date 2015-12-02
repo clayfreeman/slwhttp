@@ -256,6 +256,8 @@ void dump_file(int fd, const SandboxPath& path) {
       fsync(fd);
     }
   }
+  // Close the source file
+  close(file);
 }
 
 /**
