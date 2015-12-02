@@ -176,10 +176,14 @@ void begin() {
   // Set the user and group ID to "slwhttp"
   struct passwd* entry = getpwnam("slwhttp");
   if (entry == NULL)
-    throw std::runtime_error{"could not find UID/GID for user \"slwhttp\""};
+    throw std::runtime_error{"could not find UID/GID for user \"slwhttp\" "
+      "(create this user & group to continue)"};
   if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
     throw std::runtime_error{"failed to set UID/GID to user \"slwhttp\" "
       "(not running as root?)"};
+
+  // Inform the user of privilege drop
+  debug("now running with reduced privileges of slwhttp account");
 
   // Loop indefinitely to accept and process clients
   while (valid(_sockfd)) {
@@ -329,8 +333,10 @@ void process_request(int fd) {
     if (ready(fd, 3)) {
       // Read the request headers provided by the client
       std::vector<std::string> request = read_request(fd);
-      std::string content = Utility::implode(request, "\n    ");
-      debug("request content:\n -> " + content);
+      if (_debug == true) {
+        std::string content = Utility::implode(request, "\n    ");
+        debug("request content:\n -> " + content);
+      }
       // Check for GET request
       for (std::string line : request) {
         // Explode the line into words
