@@ -72,8 +72,8 @@ int main(int argc, const char* argv[]) {
   assert(File::realPath("/bin/.")  == "/bin");
   assert(File::realPath("/bin/..") == "/");
 
-  // Ignore SIGPIPE
-  signal(SIGPIPE, SIG_IGN);
+  // // Ignore SIGPIPE
+  // signal(SIGPIPE, SIG_IGN);
 
   // Gather a vector of all arguments from argv[]
   if (argc > 0) _path = argv[0];
