@@ -18,6 +18,7 @@
 #include <cstdlib>      // free(...), realpath(...)
 #include <cstring>      // memset(...)
 #include <fcntl.h>      // fcntl(...)
+#include <fstream>      // std::ifstream
 #include <iostream>     // std::cerr, std::endl
 #include <mutex>        // std::mutex, std::unique_lock<...>
 #include <netinet/ip.h> // socket(...)
@@ -258,7 +259,6 @@ void print_help(bool should_exit) {
  * @param  fd       The file descriptor of the associated client
  * @param  request  A std::string containing the request headers sent by the
  *                  connected client
- *
  */
 void process_request(const int& fd) {
   // Prepare storage for the request headers
@@ -296,16 +296,45 @@ void process_request(const int& fd) {
           // Extract the requested path
           SandboxPath path{_htdocs + "/" + words[1]};
           debug("GET " + path.get());
+
+          // Attempt to dump the file to the client
+          try {
+            // Open file for reading
+            std::ifstream file;
+            file.open(path.get().c_str(), std::ios::binary);
+            // Calculate the file size
+            myfile.seekg(0, std::ios::end);
+            std::streampos end = file.tellg();
+            myfile.seekg(0, std::ios::beg);
+            std::streampos beg = file.tellg();
+
+            // Write response to client
+            const std::string response{
+              "HTTP/1.0 200 OK\r\n" +
+              "Content-Type: application/octet-stream\r\n" +
+              "Content-Length: " + std::to_string(end - beg) + "\r\n" +
+              "\r\n\r\n"
+            };
+            write(fd, response.c_str(), response.length());
+            fsync(fd);
+
+            // Dump the file contents to the client
+            while (!file.feof()) {
+              // Read a buffer from the file
+              const int size = 1024;
+              char buf[size] = "";
+              file.read(buf, size);
+              // Write the buffer to the client
+              write(fd, buf, strlen(buf));
+            }
+            fsync(fd);
+          } catch (const std::exception& e) {
+            debug(e.what());
+          }
         }
       }
     }
   }
-  // else {
-    // Send "Request timeout" upon the three second timeout
-    const std::string response{"HTTP/1.0 408 Request timeout\r\n\r\n"};
-    write(fd, response.c_str(), response.length());
-    fsync(fd);
-  // }
 
   // Lock the mutex while modifying _clients
   std::unique_lock<std::mutex> lock(_mutex);
