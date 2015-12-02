@@ -80,7 +80,7 @@ int main(int argc, const char* argv[]) {
     arguments.push_back(argv[i]);
 
   // Iterate over the options until no more arguments exist
-  for (auto it = arguments.begin(); it + 1 != arguments.end(); ++it) {
+  for (auto it = arguments.begin(); it != arguments.end(); ++it) {
     // Copy the argument from the arguments vector
     std::string option{*it};
     // Lowercase the text in the option variable
@@ -93,6 +93,8 @@ int main(int argc, const char* argv[]) {
     else if (option == "--port") {
       if (it + 1 != arguments.end()) {
         try {
+          // NOTE: cppcheck complains that it + 1 is not checked for equality
+          //       against arguments.end(), but that check is three lines up...
           _port = std::stoi(*(++it));
           debug("_port = " + std::to_string(_port));
         } catch (const std::exception& e) {
