@@ -236,7 +236,7 @@ inline void debug(const std::string& str) {
  */
 void dump_file(int fd, const SandboxPath& path) {
   // Open file for reading
-  int file = open(path.c_str(), O_RDONLY);
+  int file = open(path.get(), O_RDONLY);
   // Ensure the file was successfully opened and is in good condition
   if (file >= 0) {
     // Calculate the file size
@@ -245,7 +245,7 @@ void dump_file(int fd, const SandboxPath& path) {
       // Write response to client
       const std::string response{
         "HTTP/1.0 200 OK\r\n"
-        "Content-Length: " + std::to_string(end - beg) + "\r\n"
+        "Content-Length: " + std::to_string(fsize) + "\r\n"
         "\r\n"
       };
       write(fd, response.c_str(), response.length());
