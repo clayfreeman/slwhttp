@@ -371,11 +371,11 @@ void process_request(int fd) {
     }
   }
 
-  // Lock the mutex while modifying _clients
-  std::unique_lock<std::mutex> lock(_mutex);
   // Close the file descriptor
   shutdown(fd, SHUT_RDWR);
   close(fd);
+  // Lock the mutex while modifying _clients
+  std::unique_lock<std::mutex> lock(_mutex);
   // Remove the file descriptor from the client set
   _clients.erase(_clients.find(fd));
   // Unlock the mutex
