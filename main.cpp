@@ -339,18 +339,24 @@ void process_request(const int& fd) {
         // Explode the line into words
         std::vector<std::string> words = Utility::explode(line, " ");
         // Check for "GET" request
-        if (words.size() > 1) {
-          if (Utility::strtolower(words[0]) == "get") {
-            // Extract the requested path
-            SandboxPath path{_htdocs + "/" + (words[1] != "/" ? words[1] :
-              "/index.html")};
-            debug("Fetch path: " + path.get());
+        if (words.size() > 0 && Utility::strtolower(words[0]) == "get") {
+          // Determine htdocs relative request path
+          std::string _rpath{};
+          if (words.size() == 1 || words[1] == "/")
+            // If there was no path provided, or the root was requested, serve
+            // "index.html" from the htdocs directory
+            _rpath = "/index.html";
+          else
+            // If a non-redirectable path was provided, use it
+            _rpath = words[1];
+          try {
+            // Determine absolute request path
+            SandboxPath path{_htdocs + "/" + _rpath};
+            debug("Request for file: " + path.get());
             // Attempt to dump the file to the client
-            try {
-              dump_file(fd, path);
-            } catch (const std::exception& e) {
-              access_denied(fd);
-            }
+            dump_file(fd, path);
+          } catch (const std::exception& e) {
+            access_denied(fd);
           }
         }
       }
