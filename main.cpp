@@ -394,6 +394,13 @@ std::vector<std::string> read_request(int fd) {
   std::string request{};
   // Loop until empty line as per HTTP protocol
   while (request.find("\n\n") == std::string::npos) {
+    // NOTE: Potential Denial of Service exploitation when allowing 3 second
+    //       read delay for every read; need to look into 3 second total timeout
+    //       for each client
+    //
+    //       (Hint: Denial of Service occurs when the limit(...) backlog is
+    //              exhausted by all clients sending data every 3 seconds to
+    //              stay connected)
     if (valid(fd) && ready(fd, 3)) {
       // Prepare a buffer for the incoming data
       char* buffer = (char*)calloc(8192, sizeof(char));
