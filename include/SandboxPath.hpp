@@ -18,7 +18,7 @@ class SandboxPath {
     static std::string jail;
     std::string rpath{};
   public:
-    SandboxPath(const std::string& path);
+    explicit SandboxPath(const std::string& path);
     const std::string& get() const;
     static bool checkJail(std::string path);
     static bool setJail(const std::string& path);

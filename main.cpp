@@ -80,7 +80,7 @@ int main(int argc, const char* argv[]) {
     arguments.push_back(argv[i]);
 
   // Iterate over the options until no more arguments exist
-  for (auto it = arguments.begin(); it != arguments.end(); ++it) {
+  for (auto it = arguments.begin(); it + 1 != arguments.end(); ++it) {
     // Copy the argument from the arguments vector
     std::string option{*it};
     // Lowercase the text in the option variable
