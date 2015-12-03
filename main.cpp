@@ -54,7 +54,7 @@ void                     print_help     (bool should_exit = true);
 void                     process_request(int fd);
 std::vector<std::string> read_request   (int fd);
 bool                     ready          (int fd, int tout = 0);
-bool                     safe_write     (int in_fd, int out_fd,
+bool                     safe_sendfile  (int in_fd, int out_fd,
                                          size_t data_length);
 bool                     safe_write     (int fd, const std::string& data);
 inline bool              valid          (int fd);
@@ -410,9 +410,9 @@ std::vector<std::string> read_request(int fd) {
       ssize_t data_read = read(fd, buffer, 8191);
       if (data_read >= 0) {
         // NULL the character following the last byte that was read
-        buffer[data_read] = NULL;
-        // Copy the C-String into a std::string
-        std::string req{buffer};
+        buffer[data_read] = 0;
+        // Copy the buffer into a std::string
+        std::string req{reinterpret_cast<const char*>(buffer)};
         // Ensure only newline characters are in the reponse, not CRLF
         // (canonicalizes requests so that only LF may be used)
         for (auto loc = req.find("\r\n"); loc != std::string::npos;
@@ -462,13 +462,14 @@ bool ready(int fd, int tout) {
  *
  * @return              true if successful, otherwise false
  */
-bool safe_write(int in_fd, int out_fd, size_t data_length) {
+bool safe_sendfile(int in_fd, int out_fd, size_t data_length) {
   size_t  data_sent    = 0;
   ssize_t data_written = 0;
   // Loop while there is data remaining and sendfile(...) succeeds
   while (data_written >= 0 && data_sent < data_length) {
     // Attempt to copy a chunk of data and record the amount written
-    data_written = sendfile(out_fd, in_fd, data_sent, data_length - data_sent);
+    data_written = sendfile(out_fd, in_fd, data_sent,
+      static_cast<off_t>(data_length - data_sent));
     if (data_written >= 0)
       // Increase the data_sent count by data_written on this iteration
       data_sent += static_cast<size_t>(data_written);
@@ -487,7 +488,8 @@ bool safe_write(int in_fd, int out_fd, size_t data_length) {
  * @return       true if successful, otherwise false
  */
 bool safe_write(int fd, const std::string& data) {
-  const unsigned char* data_buf = data.c_str();
+  const unsigned char* data_buf =
+    static_cast<const unsigned char*>(data.c_str());
   size_t  data_length  = data.length();
   size_t  data_sent    = 0;
   ssize_t data_written = 0;
