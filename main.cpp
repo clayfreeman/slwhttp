@@ -32,6 +32,7 @@
 #include <sys/socket.h>       // for SOL_SOCKET, AF_INET, accept, etc
 #include <sys/time.h>         // for timeval
 #include <sys/types.h>        // for ssize_t, __off64_t, off_t
+#include <thread>             // for thread
 #include <unistd.h>           // for close, lseek, fsync, read
 #include <vector>             // for vector
 
