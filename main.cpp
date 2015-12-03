@@ -178,17 +178,16 @@ void begin() {
   // Prepare the listening socket in order to accept connections
   prepare_socket();
 
-  // Set the user and group ID to "slwhttp"
-  struct passwd* entry = getpwnam("slwhttp");
+  // Set the user and group ID to "nobody"
+  struct passwd* entry = getpwnam("nobody");
   if (entry == NULL)
-    throw std::runtime_error{"could not find UID/GID for user \"slwhttp\" "
-      "(create this user & group to continue)"};
+    throw std::runtime_error{"could not find UID/GID for user \"nobody\" "};
   if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
-    throw std::runtime_error{"failed to set UID/GID to user \"slwhttp\" "
+    throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
       "(not running as root?)"};
 
   // Inform the user of privilege drop
-  debug("now running with reduced privileges of slwhttp account");
+  debug("now running with reduced privileges of 'nobody' account");
 
   // Loop indefinitely to accept and process clients
   while (valid(_sockfd)) {
