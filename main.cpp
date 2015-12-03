@@ -25,7 +25,7 @@
 #include <limits.h>           // for INT_MAX
 #include <mutex>              // for mutex, unique_lock
 #include <netinet/in.h>       // for sockaddr_in, htons, INADDR_ANY, etc
-#include <pwd.h>              // for getpwnam
+#include <pwd.h>              // for getpwnam_r
 #include <signal.h>           // for signal, SIGPIPE, SIG_IGN
 #include <string>             // for string, allocator, operator==, etc
 #include <sys/sendfile.h>     // for sendfile64
@@ -180,8 +180,10 @@ void begin() {
   prepare_socket();
 
   // Set the user and group ID to "nobody"
-  struct passwd* entry = getpwnam("nobody");
-  if (entry == NULL)
+  struct passwd* tent = nullptr;
+  struct passwd entry = {};
+  char entry_buf[256] = {};
+  if (getpwnam_r("nobody", &entry, entry_buf, sizeof(entry_buf), &tent) != 0)
     throw std::runtime_error{"could not find UID/GID for user \"nobody\" "};
   if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
     throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
