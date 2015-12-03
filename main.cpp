@@ -14,28 +14,24 @@
  * @date       November 30, 2015
  */
 
-#include <cassert>
-#include <cerrno>
-#include <climits>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <fcntl.h>
-#include <fstream>
-#include <iostream>
-#include <mutex>
-#include <netinet/ip.h>
-#include <pwd.h>
-#include <stdexcept>
-#include <string>
-#include <sys/sendfile.h>
-#include <sys/signal.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <thread>
-#include <unistd.h>
-#include <vector>
+#include <bits/socket_type.h> // for SOCK_STREAM
+#include <cassert>            // for assert
+#include <cerrno>             // for errno, EBADF
+#include <cstdlib>            // for exit, EXIT_FAILURE, NULL, etc
+#include <cstring>            // for memset
+#include <exception>          // for exception
+#include <fcntl.h>            // for fcntl, open, F_GETFD, O_RDONLY, etc
+#include <iostream>           // for operator<<, basic_ostream, endl, etc
+#include <netinet/in.h>       // for sockaddr_in, htons, INADDR_ANY, etc
+#include <pwd.h>              // for getpwnam
+#include <signal.h>           // for signal, SIGPIPE, SIG_IGN
+#include <string>             // for string, allocator, operator==, etc
+#include <sys/select.h>       // for select, FD_ISSET, FD_SET, etc
+#include <sys/socket.h>       // for SOL_SOCKET, AF_INET, accept, etc
+#include <sys/time.h>         // for timeval
+#include <sys/types.h>        // for ssize_t, __off64_t, off_t
+#include <unistd.h>           // for close, lseek, fsync, read
+#include <vector>             // for vector
 
 #include "ext/File/File.hpp"
 #include "ext/Utility/Utility.hpp"
