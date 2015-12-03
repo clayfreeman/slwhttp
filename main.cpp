@@ -3,8 +3,8 @@
  * @brief Secure Lightweight HTTP Server
  *
  * Lightweight executable that serves (read: dumps) static content from a
- * sandbox directory mimicking an extremely basic subset of the HTTP version
- * 1.0 protocol in a secure manner
+ * sandbox directory mimicking an extremely basic subset of the HTTP/1.0
+ * protocol in a secure manner
  *
  * This work is licensed under the Creative Commons Attribution-ShareAlike 4.0
  * International License. To view a copy of this license, visit:
@@ -47,7 +47,7 @@
 #define INDEX "/index.html"
 
 // Declare function prototypes
-void                     access_denied  (int fd);
+void                     access_denied  (int fd, const std::string& message);
 void                     begin          ();
 inline void              debug          (const std::string& str);
 void                     dump_file      (int fd, const SandboxPath& path);
@@ -140,7 +140,7 @@ int main(int argc, const char* argv[]) {
   try {
     begin();
   } catch (const std::exception& e) {
-    std::cerr << "Error: " << e.what() << std::endl;
+    debug(e.what());
     exit(EXIT_FAILURE);
   }
 
@@ -154,17 +154,14 @@ int main(int argc, const char* argv[]) {
  *
  * @param  fd  The file descriptor of the associated client
  */
-void access_denied(int fd) {
+void access_denied(int fd, const std::string& message) {
   if (valid(fd)) {
     // Build the response variable
-    std::string content{
-      "Forbidden\r\n"
-    };
     std::string response{
       "HTTP/1.0 403 Forbidden\r\n"
-      "Content-Length: " + std::to_string(content.length()) + "\r\n"
+      "Content-Length: " + std::to_string(message.length()) + "\r\n"
       "\r\n" +
-      content
+      message
     };
     // Write response to client
     safe_write(fd, response);
@@ -376,7 +373,7 @@ void process_request(int fd) {
             // Attempt to dump the file to the client
             dump_file(fd, path);
           } catch (const std::exception& e) {
-            access_denied(fd);
+            access_denied(fd, "Access denied to the requested path.\r\n");
             debug(e.what());
           }
         }
@@ -388,7 +385,7 @@ void process_request(int fd) {
     shutdown(fd, SHUT_RDWR);
     close(fd);
     // Remove the file descriptor from the client set
-    debug("disconnect fd:" + std::to_string(fd));
+    debug("disconnect fd: " + std::to_string(fd));
   }
 }
 
