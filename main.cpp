@@ -17,7 +17,7 @@
 // System-level header includes
 #include <cassert>            // for assert
 #include <cerrno>             // for errno, EBADF
-#include <chrono>             // for steady_clock
+#include <chrono>             // for duration_cast, steady_clock
 #include <cstdlib>            // for exit, EXIT_FAILURE, NULL, etc
 #include <cstring>            // for memset
 #include <exception>          // for exception
@@ -407,8 +407,9 @@ std::vector<std::string> read_request(int fd) {
   auto start_time = std::chrono::steady_clock::now();
   while (request.find("\n\n") == std::string::npos) {
     // Verify appropriate conditions before attempting to service request
-    if (std::chrono::steady_clock::now() - start_time < 3 &&
-        valid(fd) && ready(fd, 3)) {
+    auto time_difference = std::chrono::duration_cast<std::chrono::seconds>(
+      std::chrono::steady_clock::now() - start_time);
+    if (time_difference < 3 && valid(fd) && ready(fd, 3)) {
       // Prepare a buffer for the incoming data
       unsigned char buffer[8192] = {};
       // Read up to (8K - 1) bytes from the file descriptor to ensure a null
