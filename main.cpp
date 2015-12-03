@@ -278,7 +278,14 @@ void prepare_socket() {
   // Attempt to reuse the listen address if already (or was) in use
   int yes = 1;
   if (setsockopt(_sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
-    throw std::runtime_error{"failed to set socket option"};
+    throw std::runtime_error{"failed to set socket option SO_REUSEADDR"};
+  struct timeval timeout{3, 0};
+  if (setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, (void*)&timeout,
+      sizeof(struct timeval)) < 0)
+    throw std::runtime_error{"failed to set socket option SO_RCVTIMEO"};
+  if (setsockopt(_sockfd, SOL_SOCKET, SO_SNDTIMEO, (void*)&timeout,
+      sizeof(struct timeval)) < 0)
+    throw std::runtime_error{"failed to set socket option SO_SNDTIMEO"};
   // Attempt to bind to the listen address
   if (bind(_sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
     close(_sockfd);
