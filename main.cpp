@@ -463,8 +463,8 @@ bool ready(int fd, int tout) {
  * @return              true if successful, otherwise false
  */
 bool safe_sendfile(int in_fd, int out_fd, size_t data_length) {
-  size_t  data_sent    = 0;
-  ssize_t data_written = 0;
+  __off64_t data_sent    = 0;
+  ssize_t   data_written = 0;
   // Loop while there is data remaining and sendfile(...) succeeds
   while (data_written >= 0 && data_sent < data_length)
     // Attempt to copy a chunk of data and record the amount written
