@@ -466,14 +466,10 @@ bool safe_sendfile(int in_fd, int out_fd, size_t data_length) {
   size_t  data_sent    = 0;
   ssize_t data_written = 0;
   // Loop while there is data remaining and sendfile(...) succeeds
-  while (data_written >= 0 && data_sent < data_length) {
+  while (data_written >= 0 && data_sent < data_length)
     // Attempt to copy a chunk of data and record the amount written
-    data_written = sendfile(out_fd, in_fd, data_sent,
-      static_cast<off_t>(data_length - data_sent));
-    if (data_written >= 0)
-      // Increase the data_sent count by data_written on this iteration
-      data_sent += static_cast<size_t>(data_written);
-  }
+    data_written = sendfile64(out_fd, in_fd, &data_sent,
+      data_length - data_sent);
   return (data_written >= 0);
 }
 
@@ -489,15 +485,14 @@ bool safe_sendfile(int in_fd, int out_fd, size_t data_length) {
  */
 bool safe_write(int fd, const std::string& data) {
   const unsigned char* data_buf =
-    static_cast<const unsigned char*>(data.c_str());
+    reinterpret_cast<const unsigned char*>(data.c_str());
   size_t  data_length  = data.length();
   size_t  data_sent    = 0;
   ssize_t data_written = 0;
   // Loop while there is data remaining and write(...) succeeds
   while (data_written >= 0 && data_sent < data_length) {
     // Attempt to write a chunk of data and record the amount written
-    data_written = write(fd, data_buf + data_sent,
-      data_length - data_sent);
+    data_written = write(fd, data_buf + data_sent, data_length - data_sent);
     if (data_written >= 0)
       // Increase the data_sent count by data_written on this iteration
       data_sent += static_cast<size_t>(data_written);
