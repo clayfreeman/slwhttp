@@ -17,6 +17,7 @@
 // System-level header includes
 #include <cassert>            // for assert
 #include <cerrno>             // for errno, EBADF
+#include <chrono>             // for steady_clock
 #include <cstdlib>            // for exit, EXIT_FAILURE, NULL, etc
 #include <cstring>            // for memset
 #include <exception>          // for exception
@@ -403,15 +404,11 @@ void process_request(int fd) {
 std::vector<std::string> read_request(int fd) {
   std::string request{};
   // Loop until empty line as per HTTP protocol
+  auto start_time = std::chrono::steady_clock::now();
   while (request.find("\n\n") == std::string::npos) {
-    // TODO: Fix potential Denial of Service exploitation when allowing 3 second
-    //       read delay for every read; need to look into 3 second total timeout
-    //       for each client
-    //
-    //       (Hint: Denial of Service occurs when the limit(...) backlog is
-    //              exhausted by all clients sending data every 3 seconds to
-    //              stay connected)
-    if (valid(fd) && ready(fd, 3)) {
+    // Verify appropriate conditions before attempting to service request
+    if (std::chrono::steady_clock::now() - start_time < 3 &&
+        valid(fd) && ready(fd, 3)) {
       // Prepare a buffer for the incoming data
       unsigned char buffer[8192] = {};
       // Read up to (8K - 1) bytes from the file descriptor to ensure a null
