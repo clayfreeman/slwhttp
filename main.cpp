@@ -14,6 +14,7 @@
  * @date       November 30, 2015
  */
 
+// System-level header includes
 #include <cassert>            // for assert
 #include <cerrno>             // for errno, EBADF
 #include <cstdlib>            // for exit, EXIT_FAILURE, NULL, etc
@@ -36,6 +37,7 @@
 #include <unistd.h>           // for close, lseek, fsync, read
 #include <vector>             // for vector
 
+// User-level header includes
 #include "ext/File/File.hpp"
 #include "ext/Utility/Utility.hpp"
 #include "include/SandboxPath.hpp"
