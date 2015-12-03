@@ -286,8 +286,8 @@ void prepare_socket() {
       std::to_string(_port)};
   }
   else {
-    // Listen with a backlog of 1
-    if (listen(_sockfd, 64) < 0) {
+    // Listen with a backlog of 256
+    if (listen(_sockfd, 256) < 0) {
       close(_sockfd);
       throw std::runtime_error{"failed to listen on socket"};
     }
