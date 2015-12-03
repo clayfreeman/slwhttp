@@ -293,8 +293,8 @@ void prepare_socket() {
       std::to_string(_port)};
   }
   else {
-    // Listen with a backlog of 128
-    if (listen(_sockfd, 128) < 0) {
+    // Listen with a backlog of 256
+    if (listen(_sockfd, 256) < 0) {
       close(_sockfd);
       throw std::runtime_error{"failed to listen on socket"};
     }
@@ -415,7 +415,7 @@ std::vector<std::string> read_request(int fd) {
       // Read up to (8K - 1) bytes from the file descriptor to ensure a null
       // character at the end to prevent overflow
       ssize_t data_read = read(fd, buffer, 8191);
-      if (data_read >= 0) {
+      if (data_read > 0) {
         // NULL the character following the last byte that was read
         buffer[data_read] = 0;
         // Copy the buffer into a std::string
@@ -428,6 +428,10 @@ std::vector<std::string> read_request(int fd) {
         // Append req to the request headers
         request += req;
       }
+      else if (data_read == 0)
+        // The client has disconnected if marked as readable, but no data was
+        // received from it
+        break;
     }
     else break;
   }
