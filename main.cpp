@@ -409,7 +409,8 @@ std::vector<std::string> read_request(int fd) {
     // Verify appropriate conditions before attempting to service request
     auto time_difference = std::chrono::duration_cast<std::chrono::seconds>(
       std::chrono::steady_clock::now() - start_time);
-    if (time_difference < 3 && valid(fd) && ready(fd, 3)) {
+    if (time_difference < std::chrono::duration<int>{3} &&
+        valid(fd) && ready(fd, 3)) {
       // Prepare a buffer for the incoming data
       unsigned char buffer[8192] = {};
       // Read up to (8K - 1) bytes from the file descriptor to ensure a null
