@@ -54,6 +54,9 @@ void                     print_help     (bool should_exit = true);
 void                     process_request(int fd);
 std::vector<std::string> read_request   (int fd);
 bool                     ready          (int fd, int tout = 0);
+bool                     safe_write     (int in_fd, int out_fd,
+                                         size_t data_length);
+bool                     safe_write     (int fd, const std::string& data);
 inline bool              valid          (int fd);
 
 // Declare storage for global configuration state
@@ -162,7 +165,7 @@ void access_denied(int fd) {
       content
     };
     // Write response to client
-    write(fd, response.c_str(), response.length());
+    safe_write(fd, response);
   }
 }
 
@@ -246,10 +249,8 @@ void dump_file(int fd, const SandboxPath& path) {
         };
 
         // Dump the response to the client
-        if (write(fd, response.c_str(), response.length()) < 0)
-          perror("WRITE ERROR");
-        if (sendfile(fd, file, 0, fsize) < 0)
-          perror("WRITE ERROR");
+        safe_write(fd, response);
+        safe_sendfile(file, fd, fsize);
       }
     }
     // Close the source file
@@ -394,7 +395,7 @@ std::vector<std::string> read_request(int fd) {
   std::string request{};
   // Loop until empty line as per HTTP protocol
   while (request.find("\n\n") == std::string::npos) {
-    // NOTE: Potential Denial of Service exploitation when allowing 3 second
+    // TODO: Fix potential Denial of Service exploitation when allowing 3 second
     //       read delay for every read; need to look into 3 second total timeout
     //       for each client
     //
@@ -403,20 +404,23 @@ std::vector<std::string> read_request(int fd) {
     //              stay connected)
     if (valid(fd) && ready(fd, 3)) {
       // Prepare a buffer for the incoming data
-      char* buffer = (char*)calloc(8192, sizeof(char));
+      unsigned char buffer[8192] = {};
       // Read up to (8K - 1) bytes from the file descriptor to ensure a null
       // character at the end to prevent overflow
-      read(fd, buffer, 8191);
-      // Copy the C-String into a std::string
-      std::string req{buffer};
-      // Free the storage for the buffer ...
-      free(buffer);
-      // Replace carriage return in req with null
-      for (auto loc = req.find("\r\n"); loc != std::string::npos;
-          loc = req.find("\r\n", ++loc))
-        req.replace(loc, 2, "\n");
-      // Append req to the request headers
-      request += req;
+      ssize_t data_read = read(fd, buffer, 8191);
+      if (data_read >= 0) {
+        // NULL the character following the last byte that was read
+        buffer[data_read] = NULL;
+        // Copy the C-String into a std::string
+        std::string req{buffer};
+        // Ensure only newline characters are in the reponse, not CRLF
+        // (canonicalizes requests so that only LF may be used)
+        for (auto loc = req.find("\r\n"); loc != std::string::npos;
+            loc = req.find("\r\n", ++loc))
+          req.replace(loc, 2, "\n");
+        // Append req to the request headers
+        request += req;
+      }
     }
     else break;
   }
@@ -444,6 +448,59 @@ bool ready(int fd, int tout) {
   // Use select to determine status
   select(fd + 1, &rfds, NULL, NULL, &timeout);
   return FD_ISSET(fd, &rfds);
+}
+
+/**
+ * @brief Safe Sendfile
+ *
+ * Safely copies the contents of the given input file descriptor to the given
+ * output file descriptor
+ *
+ * @param  in_fd        The file descriptor to which the data will be written
+ * @param  out_fd       The data that should be written
+ * @param  data_length  The amount of data to write (input size)
+ *
+ * @return              true if successful, otherwise false
+ */
+bool safe_write(int in_fd, int out_fd, size_t data_length) {
+  size_t  data_sent    = 0;
+  ssize_t data_written = 0;
+  // Loop while there is data remaining and sendfile(...) succeeds
+  while (data_written >= 0 && data_sent < data_length) {
+    // Attempt to copy a chunk of data and record the amount written
+    data_written = sendfile(out_fd, in_fd, data_sent, data_length - data_sent);
+    if (data_written >= 0)
+      // Increase the data_sent count by data_written on this iteration
+      data_sent += static_cast<size_t>(data_written);
+  }
+  return (data_written >= 0);
+}
+
+/**
+ * @brief Safe Write
+ *
+ * Safely writes the given data to a file descriptor
+ *
+ * @param  fd    The file descriptor to which the data will be written
+ * @param  data  The data that should be written
+ *
+ * @return       true if successful, otherwise false
+ */
+bool safe_write(int fd, const std::string& data) {
+  const unsigned char* data_buf = data.c_str();
+  size_t  data_length  = data.length();
+  size_t  data_sent    = 0;
+  ssize_t data_written = 0;
+  // Loop while there is data remaining and write(...) succeeds
+  while (data_written >= 0 && data_sent < data_length) {
+    // Attempt to write a chunk of data and record the amount written
+    data_written = write(fd, data_buf + data_sent,
+      data_length - data_sent);
+    if (data_written >= 0)
+      // Increase the data_sent count by data_written on this iteration
+      data_sent += static_cast<size_t>(data_written);
+  }
+  return (data_written >= 0);
 }
 
 /**
