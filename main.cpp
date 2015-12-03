@@ -14,7 +14,6 @@
  * @date       November 30, 2015
  */
 
-#include <bits/socket_type.h> // for SOCK_STREAM
 #include <cassert>            // for assert
 #include <cerrno>             // for errno, EBADF
 #include <cstdlib>            // for exit, EXIT_FAILURE, NULL, etc
@@ -22,10 +21,13 @@
 #include <exception>          // for exception
 #include <fcntl.h>            // for fcntl, open, F_GETFD, O_RDONLY, etc
 #include <iostream>           // for operator<<, basic_ostream, endl, etc
+#include <limits.h>           // for INT_MAX
+#include <mutex>              // for mutex, unique_lock
 #include <netinet/in.h>       // for sockaddr_in, htons, INADDR_ANY, etc
 #include <pwd.h>              // for getpwnam
 #include <signal.h>           // for signal, SIGPIPE, SIG_IGN
 #include <string>             // for string, allocator, operator==, etc
+#include <sys/sendfile.h>     // for sendfile64
 #include <sys/select.h>       // for select, FD_ISSET, FD_SET, etc
 #include <sys/socket.h>       // for SOL_SOCKET, AF_INET, accept, etc
 #include <sys/time.h>         // for timeval
