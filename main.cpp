@@ -61,12 +61,12 @@ bool                     safe_write     (int fd, const std::string& data);
 inline bool              valid          (int fd);
 
 // Declare storage for global configuration state
-bool            _debug = false;
-std::string    _htdocs = "";
-std::mutex      _mutex = {};
-std::string      _path = "";
-int              _port = 80;
-int            _sockfd = -1;
+bool         _debug = false;
+std::string _htdocs = "";
+std::mutex   _mutex = {};
+std::string   _path = "";
+int           _port = 80;
+int         _sockfd = -1;
 
 int main(int argc, const char* argv[]) {
   // General assertions for reliability
