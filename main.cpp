@@ -394,7 +394,7 @@ void process_request(int fd) {
 std::vector<std::string> read_request(int fd) {
   std::string request{};
   // Loop until empty line as per HTTP protocol
-  while (request.find("\n\n") == std::string::npos) {
+  while (valid(fd) && request.find("\n\n") == std::string::npos) {
     // TODO: Fix potential Denial of Service exploitation when allowing 3 second
     //       read delay for every read; need to look into 3 second total timeout
     //       for each client
@@ -402,7 +402,7 @@ std::vector<std::string> read_request(int fd) {
     //       (Hint: Denial of Service occurs when the limit(...) backlog is
     //              exhausted by all clients sending data every 3 seconds to
     //              stay connected)
-    if (valid(fd) && ready(fd, 3)) {
+    if (ready(fd, 3)) {
       // Prepare a buffer for the incoming data
       unsigned char buffer[8192] = {};
       // Read up to (8K - 1) bytes from the file descriptor to ensure a null
