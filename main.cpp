@@ -185,7 +185,7 @@ void begin() {
   char entry_buf[256] = {};
   if (getpwnam_r("nobody", &entry, entry_buf, sizeof(entry_buf), &tent) != 0)
     throw std::runtime_error{"could not find UID/GID for user \"nobody\" "};
-  if (setgid(entry->pw_gid) != 0 || setuid(entry->pw_uid) != 0)
+  if (setgid(entry.pw_gid) != 0 || setuid(entry.pw_uid) != 0)
     throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
       "(not running as root?)"};
 
