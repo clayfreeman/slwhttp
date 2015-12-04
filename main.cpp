@@ -179,7 +179,9 @@ void begin() {
 
   // Set the user and group ID to "nobody"
   struct passwd* tent = nullptr;
-  struct passwd entry = {};
+  struct passwd entry;
+  // Ensure the entry is zero-initialized
+  memset(&entry, 0, sizeof(struct passwd));
   char entry_buf[256] = {};
   if (getpwnam_r("nobody", &entry, entry_buf, sizeof(entry_buf), &tent) != 0)
     throw std::runtime_error{"could not find UID/GID for user \"nobody\" "};
