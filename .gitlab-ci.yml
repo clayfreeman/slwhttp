@@ -1,3 +1,3 @@
 build:
   script: "apt-get update && apt-get install -y g++ git make && \
-           git submodule update --init && make"
+           git submodule update --init && make && ./slwhttp --help"
