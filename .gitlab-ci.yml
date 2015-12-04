@@ -1,2 +1,3 @@
 build:
-  script: "apt-get update && apt-get install -y g++ make && make"
+  script: "apt-get update && apt-get install -y g++ make && \
+           git submodule update --init && make"
