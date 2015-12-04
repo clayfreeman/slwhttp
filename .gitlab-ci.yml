@@ -1,2 +1,5 @@
-build:
-  script: "apt-get update; apt-get install -y build-essential; make"
+prep:
+  script: "apt-get update && apt-get install -y g++ make"
+
+compile:
+  script: "make"
