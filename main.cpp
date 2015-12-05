@@ -256,8 +256,8 @@ void dump_file(int fd, const SandboxPath& path) {
     // Ensure the file was successfully opened and is in good condition
     if (valid(file)) {
       // Calculate the file size
-      off_t fsize = lseek(file, 0, SEEK_END);
-      if (fsize >= 0 && lseek(file, 0, SEEK_SET) >= 0) {
+      int64_t fsize = lseek64(file, 0, SEEK_END);
+      if (fsize >= 0 && lseek64(file, 0, SEEK_SET) >= 0) {
         // Write response to client
         const std::string response{
           "HTTP/1.0 200 OK\r\n"
