@@ -200,7 +200,7 @@ void begin() {
 
   // Drop to a daemon process if not running in debug mode
   if (_debug == true)
-    daemon();
+    daemon(0, 0);
 
   // Loop indefinitely to accept and process clients
   while (valid(_sockfd)) {
@@ -232,7 +232,7 @@ inline void debug(const std::string& str, bool error) {
     std::unique_lock<std::mutex> lock{_mutex};
     if (error == true)
       // Print the message using perror(...)
-      perror((std::to_string(ERROR_TAG) + str).c_str());
+      perror((ERROR_TAG + str).c_str());
     else
       // Print the given message
       std::cerr << ERROR_TAG << str << std::endl;
@@ -266,7 +266,7 @@ void dump_file(int fd, const SandboxPath& path) {
 
         // Dump the response to the client
         debug("attempting to send " + std::to_string(fsize) + " bytes to "
-          "client: " + fd);
+          "client: " + std::to_string(fd));
         safe_write(fd, response);
         safe_sendfile(file, fd, fsize);
       }
@@ -422,7 +422,7 @@ std::vector<std::string> read_request(int fd) {
   while (request.find("\n\n") == std::string::npos) {
     // Verify appropriate conditions before attempting to service request
     auto timediff = std::chrono::high_resolution_clock::now() - start_time;
-    auto duration = std::chrono::duration_cast<std::chrono::seconds>(time_diff);
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(timediff);
     if (duration < std::chrono::duration<int>{3} && valid(fd)) {
       // Determine if the client is readable with a delay of 10 ms
       if (ready(fd, 0, 10000)) {
