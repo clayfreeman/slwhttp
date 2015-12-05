@@ -55,7 +55,7 @@ void                     prepare_socket ();
 void                     print_help     (bool should_exit = true);
 void                     process_request(int fd);
 std::vector<std::string> read_request   (int fd);
-bool                     ready          (int fd, int tout = 0);
+bool                     ready          (int fd, int sec = 0, int usec = 0);
 bool                     safe_sendfile  (int in_fd, int out_fd,
                                          size_t data_length);
 bool                     safe_write     (int fd, const std::string& data);
@@ -341,43 +341,40 @@ void process_request(int fd) {
   // Ensure that the provided fd is valid
   if (valid(fd)) {
     debug("process_request(" + std::to_string(fd) + ")");
-    // Ensure the client has sent some data within three seconds
-    if (ready(fd, 3)) {
-      // Read the request headers provided by the client
-      std::vector<std::string> request = read_request(fd);
-      if (_debug == true) {
-        std::string content = Utility::implode(request, "\n    ");
-        debug("request content:\n -> " + content);
-      }
-      // Check for GET request
-      for (std::string line : request) {
-        // Explode the line into words
-        std::vector<std::string> words = Utility::explode(
-          Utility::trim(line), " ");
-        // Check for "GET" request
-        if (words.size() > 0 && Utility::strtolower(words[0]) == "get") {
-          // Determine htdocs relative request path
-          std::string _rpath{};
-          if (words.size() == 1 || Utility::trim(words[1]) == "/")
-            // If there was no path provided, or the root was requested, serve
-            // the INDEX macro from htdocs
-            _rpath = INDEX;
-          else
-            // If a non-redirectable path was provided, use it
-            _rpath = words[1];
+    // Read the request headers provided by the client
+    std::vector<std::string> request = read_request(fd);
+    if (_debug == true) {
+      std::string content = Utility::implode(request, "\n    ");
+      debug("request content:\n -> " + content);
+    }
+    // Check for GET request
+    for (std::string line : request) {
+      // Explode the line into words
+      std::vector<std::string> words = Utility::explode(
+        Utility::trim(line), " ");
+      // Check for "GET" request
+      if (words.size() > 0 && Utility::strtolower(words[0]) == "get") {
+        // Determine htdocs relative request path
+        std::string _rpath{};
+        if (words.size() == 1 || Utility::trim(words[1]) == "/")
+          // If there was no path provided, or the root was requested, serve
+          // the INDEX macro from htdocs
+          _rpath = INDEX;
+        else
+          // If a non-redirectable path was provided, use it
+          _rpath = words[1];
 
-          try {
-            // Determine absolute request path
-            _rpath = _htdocs + "/" + _rpath;
-            debug("raw request for path: " + _rpath);
-            SandboxPath path{_rpath};
-            debug("sandboxed request for real path: " + path.get());
-            // Attempt to dump the file to the client
-            dump_file(fd, path);
-          } catch (const std::exception& e) {
-            access_denied(fd, "Access denied to the requested path.\r\n");
-            debug(e.what());
-          }
+        try {
+          // Determine absolute request path
+          _rpath = _htdocs + "/" + _rpath;
+          debug("raw request for path: " + _rpath);
+          SandboxPath path{_rpath};
+          debug("sandboxed request for real path: " + path.get());
+          // Attempt to dump the file to the client
+          dump_file(fd, path);
+        } catch (const std::exception& e) {
+          access_denied(fd, "Access denied to the requested path.\r\n");
+          debug(e.what());
         }
       }
     }
@@ -408,31 +405,33 @@ std::vector<std::string> read_request(int fd) {
     // Verify appropriate conditions before attempting to service request
     auto time_difference = std::chrono::duration_cast<std::chrono::seconds>(
       std::chrono::high_resolution_clock::now() - start_time);
-    if (time_difference < std::chrono::duration<int>{3} &&
-        valid(fd) && ready(fd, 3)) {
-      // Prepare a buffer for the incoming data
-      unsigned char buffer[8192] = {};
-      // Read up to (8K - 1) bytes from the file descriptor to ensure a null
-      // character at the end to prevent overflow
-      ssize_t data_read = read(fd, buffer, 8191);
-      if (data_read > 0) {
-        // NULL the character following the last byte that was read
-        buffer[data_read] = 0;
-        // Copy the buffer into a std::string
-        std::string req{reinterpret_cast<const char*>(buffer)};
-        // Ensure only newline characters are in the reponse, not CRLF
-        // (canonicalizes requests so that only LF may be used)
-        for (auto loc = req.find("\r\n"); loc != std::string::npos;
-            loc = req.find("\r\n", ++loc))
-          req.replace(loc, 2, "\n");
-        // Append req to the request headers
-        request += req;
-      }
-      else if (data_read == 0) {
-        // The client has disconnected if marked as readable, but no data was
-        // received from it
-        request.clear();
-        break;
+    if (time_difference < std::chrono::duration<int>{3} && valid(fd)) {
+      // Determine if the client is readable with a delay of 10 ms
+      if (ready(fd, 0, 10000)) {
+        // Prepare a buffer for the incoming data
+        unsigned char buffer[8192] = {};
+        // Read up to (8K - 1) bytes from the file descriptor to ensure a null
+        // character at the end to prevent overflow
+        ssize_t data_read = read(fd, buffer, 8191);
+        if (data_read > 0) {
+          // NULL the character following the last byte that was read
+          buffer[data_read] = 0;
+          // Copy the buffer into a std::string
+          std::string req{reinterpret_cast<const char*>(buffer)};
+          // Ensure only newline characters are in the reponse, not CRLF
+          // (canonicalizes requests so that only LF may be used)
+          for (auto loc = req.find("\r\n"); loc != std::string::npos;
+              loc = req.find("\r\n", ++loc))
+            req.replace(loc, 2, "\n");
+          // Append req to the request headers
+          request += req;
+        }
+        else if (data_read == 0) {
+          // The client has disconnected if marked as readable, but no data was
+          // received from it
+          request.clear();
+          break;
+        }
       }
     }
     else {
@@ -454,7 +453,7 @@ std::vector<std::string> read_request(int fd) {
  *
  * @return     true if ready, otherwise false
  */
-bool ready(int fd, int tout) {
+bool ready(int fd, int sec, int usec) {
   // Setup storage to determine if fd is readable
   fd_set rfds;
   FD_ZERO(&rfds);
@@ -462,7 +461,7 @@ bool ready(int fd, int tout) {
   if (valid(fd))
     FD_SET(fd, &rfds);
   // Declare an immediate timeout
-  struct timeval timeout{tout, 0};
+  struct timeval timeout{sec, usec};
   // Use select to determine status
   select(fd + 1, &rfds, NULL, NULL, &timeout);
   return FD_ISSET(fd, &rfds);
