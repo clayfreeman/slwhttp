@@ -490,7 +490,7 @@ bool ready(int fd, int sec, int usec) {
  * @brief Safe Sendfile
  *
  * Safely copies the contents of the given input file descriptor to the given
- * output file descriptor
+ * output file descriptor (up to 8 exbibytes)
  *
  * @param  in_fd        The file descriptor to which the data will be written
  * @param  out_fd       The data that should be written
@@ -511,7 +511,9 @@ bool safe_sendfile(int in_fd, int out_fd, int64_t data_length) {
 /**
  * @brief Safe Write
  *
- * Safely writes the given data to a file descriptor
+ * Safely writes the given data to a file descriptor.  This function guarantees
+ * a supported size of 64KB minus 1 byte as per the standard for size_t, but
+ * probably supports a greater size depending on your system
  *
  * @param  fd    The file descriptor to which the data will be written
  * @param  data  The data that should be written
