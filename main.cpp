@@ -399,7 +399,6 @@ void process_request(int fd) {
     }
 
     // Close the file descriptor
-    fsync(fd);
     shutdown(fd, SHUT_RDWR);
     close(fd);
     // Remove the file descriptor from the client set
