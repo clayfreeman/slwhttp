@@ -57,7 +57,7 @@ void                     process_request(int fd);
 std::vector<std::string> read_request   (int fd);
 bool                     ready          (int fd, int sec = 0, int usec = 0);
 bool                     safe_sendfile  (int in_fd, int out_fd,
-                                         size_t data_length);
+                                         int64_t data_length);
 bool                     safe_write     (int fd, const std::string& data);
 inline bool              valid          (int fd);
 
@@ -479,9 +479,9 @@ bool ready(int fd, int sec, int usec) {
  *
  * @return              true if successful, otherwise false
  */
-bool safe_sendfile(int in_fd, int out_fd, uint64_t data_length) {
-  uint64_t data_sent    = 0;
-   int64_t return_val   = 0;
+bool safe_sendfile(int in_fd, int out_fd, int64_t data_length) {
+  int64_t data_sent    = 0;
+  int64_t return_val   = 0;
   // Loop while there is data remaining and sendfile(...) succeeds
   while (return_val >= 0 && data_sent < data_length)
     // Attempt to copy a chunk of data and record the amount written
