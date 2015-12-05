@@ -417,7 +417,7 @@ std::vector<std::string> read_request(int fd) {
           // NULL the character following the last byte that was read
           buffer[data_read] = 0;
           // Copy the buffer into a std::string
-          std::string req{static_cast<const char*>(buffer)};
+          std::string req{static_cast<const unsigned char*>(buffer)};
           // Ensure only newline characters are in the reponse, not CRLF
           // (canonicalizes requests so that only LF may be used)
           for (auto loc = req.find("\r\n"); loc != std::string::npos;
