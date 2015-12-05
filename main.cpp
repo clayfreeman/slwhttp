@@ -417,7 +417,7 @@ std::vector<std::string> read_request(int fd) {
           // NULL the character following the last byte that was read
           buffer[data_read] = 0;
           // Copy the buffer into a std::string
-          std::string req{reinterpret_cast<const char*>(buffer)};
+          std::string req{static_cast<const char*>(buffer)};
           // Ensure only newline characters are in the reponse, not CRLF
           // (canonicalizes requests so that only LF may be used)
           for (auto loc = req.find("\r\n"); loc != std::string::npos;
@@ -500,20 +500,20 @@ bool safe_sendfile(int in_fd, int out_fd, int64_t data_length) {
  * @return       true if successful, otherwise false
  */
 bool safe_write(int fd, const std::string& data) {
-  const unsigned char* data_buf =
-    reinterpret_cast<const unsigned char*>(data.c_str());
-  size_t  data_length  = data.length();
-  size_t  data_sent    = 0;
-  ssize_t data_written = 0;
+  const unsigned char* data_buf = static_cast<const unsigned char*>(
+                                  data.data());
+   size_t  data_length = data.length();
+   size_t  data_sent   = 0;
+  ssize_t  return_val  = 0;
   // Loop while there is data remaining and write(...) succeeds
-  while (data_written >= 0 && data_sent < data_length) {
+  while (return_val >= 0 && data_sent < data_length) {
     // Attempt to write a chunk of data and record the amount written
-    data_written = write(fd, data_buf + data_sent, data_length - data_sent);
-    if (data_written >= 0)
+    return_val = write(fd, data_buf + data_sent, data_length - data_sent);
+    if (return_val >= 0)
       // Increase the data_sent count by data_written on this iteration
-      data_sent += static_cast<size_t>(data_written);
+      data_sent += static_cast<size_t>(return_val);
   }
-  return (data_written >= 0);
+  return (data_sent == data_length);
 }
 
 /**
