@@ -266,7 +266,7 @@ void dump_file(int fd, const SandboxPath& path) {
         };
 
         // Dump the response to the client
-        debug("attempting to send " + std::to_string(fsize) + " bytes to "
+        debug("attempting to send " + std::to_string(fsize) + " byte file to "
           "client: " + std::to_string(fd));
         safe_write(fd, response);
         safe_sendfile(file, fd, fsize);
