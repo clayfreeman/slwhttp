@@ -46,12 +46,14 @@
 #include "include/SandboxPath.hpp"
 
 // Set the default index path (from htdocs directory)
-#define INDEX "/index.html"
+#define ERROR_TAG "[DEBUG] "
+#define INDEX     "/index.html"
 
 // Declare function prototypes
 void                     access_denied  (int fd, const std::string& message);
 void                     begin          ();
-inline void              debug          (const std::string& str);
+inline void              debug          (const std::string& str,
+                                         bool error = false);
 void                     dump_file      (int fd, const SandboxPath& path);
 void                     prepare_socket ();
 void                     print_help     (bool should_exit = true);
@@ -77,7 +79,7 @@ int main(int argc, const char* argv[]) {
   assert(File::realPath("/bin/.")  == "/bin");
   assert(File::realPath("/bin/..") == "/");
 
-  // Ignore SIGPIPE (not needed, just a precaution)
+  // Ignore SIGPIPE (shouldn't be needed, just a precaution)
   signal(SIGPIPE, SIG_IGN);
 
   // Gather a vector of all arguments from argv[]
@@ -90,6 +92,8 @@ int main(int argc, const char* argv[]) {
   for (auto it = arguments.begin(); it != arguments.end(); ++it) {
     // Copy the argument from the arguments vector
     std::string option{*it};
+    // Debug the option being processed
+    debug("processing option: " + option);
     // Lowercase the text in the option variable
     Utility::strtolower(option);
     // Check if the given item is a valid option
@@ -194,6 +198,10 @@ void begin() {
   // Inform the user of privilege drop
   debug("now running with reduced privileges of 'nobody' account");
 
+  // Drop to a daemon process if not running in debug mode
+  if (_debug == true)
+    daemon();
+
   // Loop indefinitely to accept and process clients
   while (valid(_sockfd)) {
     // Stall for incoming connections or data
@@ -202,12 +210,11 @@ void begin() {
     int clifd = accept(_sockfd, NULL, NULL);
     // Check if the client descriptor is valid
     if (valid(clifd)) {
-      debug("accepted client");
+      debug("accepted client: " + std::to_string(clifd));
       // Process the request
       std::thread(process_request, clifd).detach();
     }
-    else if (_debug == true)
-      perror(("[DEBUG] Error " + std::to_string(errno)).c_str());
+    else debug("error accepting client", true);
   }
 }
 
@@ -216,14 +223,19 @@ void begin() {
  *
  * Prints debug information if debug mode is enabled
  *
- * @param  str  The input string
+ * @param  str    The input string
+ * @param  error  Whether or not this call should print using perror(...)
  */
-inline void debug(const std::string& str) {
+inline void debug(const std::string& str, bool error) {
   // Check if debug mode is enabled
   if (_debug == true) {
     std::unique_lock<std::mutex> lock{_mutex};
-    // Print the given message
-    std::cerr << "[DEBUG] " << str << std::endl;
+    if (error == true)
+      // Print the message using perror(...)
+      perror((std::to_string(ERROR_TAG) + str).c_str());
+    else
+      // Print the given message
+      std::cerr << ERROR_TAG << str << std::endl;
   }
 }
 
@@ -253,6 +265,8 @@ void dump_file(int fd, const SandboxPath& path) {
         };
 
         // Dump the response to the client
+        debug("attempting to send " + std::to_string(fsize) + " bytes to "
+          "client: " + fd);
         safe_write(fd, response);
         safe_sendfile(file, fd, fsize);
       }
@@ -347,7 +361,8 @@ void process_request(int fd) {
     std::vector<std::string> request = read_request(fd);
     if (_debug == true) {
       std::string content = Utility::implode(request, "\n    ");
-      debug("request content:\n -> " + content);
+      debug("request content (from fd: " + std::to_string(fd) + "):\n -> " +
+        content);
     }
     // Check for GET request
     for (std::string line : request) {
@@ -371,7 +386,8 @@ void process_request(int fd) {
           _rpath = _htdocs + "/" + _rpath;
           debug("raw request for path: " + _rpath);
           SandboxPath path{_rpath};
-          debug("sandboxed request for real path: " + path.get());
+          debug("sandboxed request for real path (from fd: " +
+            std::to_string(fd) + "): " + path.get());
           // Attempt to dump the file to the client
           dump_file(fd, path);
         } catch (const std::exception& e) {
@@ -405,9 +421,9 @@ std::vector<std::string> read_request(int fd) {
   auto start_time = std::chrono::high_resolution_clock::now();
   while (request.find("\n\n") == std::string::npos) {
     // Verify appropriate conditions before attempting to service request
-    auto time_difference = std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::high_resolution_clock::now() - start_time);
-    if (time_difference < std::chrono::duration<int>{3} && valid(fd)) {
+    auto timediff = std::chrono::high_resolution_clock::now() - start_time;
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(time_diff);
+    if (duration < std::chrono::duration<int>{3} && valid(fd)) {
       // Determine if the client is readable with a delay of 10 ms
       if (ready(fd, 0, 10000)) {
         // Prepare a buffer for the incoming data
