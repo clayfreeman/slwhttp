@@ -500,7 +500,7 @@ bool safe_sendfile(int in_fd, int out_fd, int64_t data_length) {
  * @return       true if successful, otherwise false
  */
 bool safe_write(int fd, const std::string& data) {
-  const unsigned char* data_buf = static_cast<const unsigned char*>(
+  const unsigned char* data_buf = reinterpret_cast<const unsigned char*>(
                                   data.data());
    size_t  data_length = data.length();
    size_t  data_sent   = 0;
