@@ -203,6 +203,7 @@ void begin() {
     daemon(0, 0);
 
   // Loop indefinitely to accept and process clients
+  debug("begin accepting clients securely");
   while (valid(_sockfd)) {
     // Stall for incoming connections or data
     ready(_sockfd, INT_MAX);
