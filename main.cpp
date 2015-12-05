@@ -199,7 +199,7 @@ void begin() {
   debug("now running with reduced privileges of 'nobody' account");
 
   // Drop to a daemon process if not running in debug mode
-  if (_debug == true)
+  if (_debug != true)
     daemon(0, 0);
 
   // Loop indefinitely to accept and process clients
