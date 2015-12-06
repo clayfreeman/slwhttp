@@ -4,3 +4,6 @@
 [submodule "ext/File"]
 	path = ext/File
 	url = https://github.com/clayfreeman/File.git
+[submodule "ext/Makefile"]
+	path = ext/Makefile
+	url = https://github.com/clayfreeman/Makefile.git
