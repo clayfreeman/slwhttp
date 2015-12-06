@@ -9,6 +9,5 @@ addons:
     packages:
       - g++-4.9
 
-script: "git submodule update --init && \
-         make CXX=g++-4.9 clean all && \
+script: "make CXX=g++-4.9 clean all && \
          ./slwhttp --help"
