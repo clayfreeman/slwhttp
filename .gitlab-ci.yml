@@ -1,6 +1,7 @@
 build:
   script: "apt-get update &> /dev/null && \
-           apt-get install -y g++ git make &> /dev/null && \
+           apt-get install -y build-essential &> /dev/null && \
            git submodule update --init && \
-           make clean all && \
-           ./slwhttp --help"
+           ./configure && \
+           make install && \
+           slwhttp --help"

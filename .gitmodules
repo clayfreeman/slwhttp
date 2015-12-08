@@ -1,9 +1,6 @@
-[submodule "ext/Utility"]
-	path = ext/Utility
-	url = https://github.com/clayfreeman/Utility.git
-[submodule "ext/File"]
-	path = ext/File
+[submodule "src/ext/File"]
+	path = src/ext/File
 	url = https://github.com/clayfreeman/File.git
-[submodule "ext/Makefile"]
-	path = ext/Makefile
-	url = https://github.com/clayfreeman/Makefile.git
+[submodule "src/ext/Utility"]
+	path = src/ext/Utility
+	url = https://github.com/clayfreeman/Utility.git
