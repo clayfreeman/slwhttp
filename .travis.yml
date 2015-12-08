@@ -10,6 +10,6 @@ addons:
       - build-essential
       - g++-4.9
 
-script: "./configure && \
+script: "./configure CXX=g++-4.9 && \
          make install && \
          slwhttp --help"
