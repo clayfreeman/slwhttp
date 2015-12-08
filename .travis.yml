@@ -1,3 +1,5 @@
+language: cpp
+compiler: g++-4.9
 sudo: required
 dist: trusty
 
