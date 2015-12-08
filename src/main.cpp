@@ -191,7 +191,7 @@ void begin() {
   char entry_buf[256] = {};
   if (getpwnam_r("nobody", &entry, entry_buf, sizeof(entry_buf), &tent) != 0)
     throw std::runtime_error{"could not find UID/GID for user \"nobody\" "};
-  if (setgid(entry.pw_gid) != 0 || setuid(entry.pw_uid) != 0)
+  if (setegid(entry.pw_gid) != 0 || seteuid(entry.pw_uid) != 0)
     throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
       "(not running as root?)"};
 
@@ -200,7 +200,8 @@ void begin() {
 
   // Drop to a daemon process if not running in debug mode
   if (_debug != true)
-    daemon(0, 0);
+    if (daemon(0, 0) != 0)
+      debug("couldn't daemonize", true);
 
   // Loop indefinitely to accept and process clients
   debug("begin accepting clients securely");
