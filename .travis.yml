@@ -1,19 +1,10 @@
-language: cpp
-compiler: g++-4.9
-sudo: false
+sudo: required
 dist: trusty
 
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - autoconf
-      - automake
-      - g++-4.9
-      - libtool
-
-script: "./autogen.sh && \
-         ./configure CXX=g++-4.9 && \
+script: "apt-get update &> /dev/null && \
+         apt-get install -y autoconf automake g++ git libtool make && \
+         git submodule update --init && \
+         ./autogen.sh && \
+         ./configure && \
          make install && \
          slwhttp --help"
