@@ -10,8 +10,8 @@
 
 #include <stdexcept>
 #include <string>
-#include "../ext/File/File.hpp"
-#include "../include/SandboxPath.hpp"
+#include "ext/File/File.hpp"
+#include "include/SandboxPath.hpp"
 
 // Initialize static members
 std::string SandboxPath::jail{};
