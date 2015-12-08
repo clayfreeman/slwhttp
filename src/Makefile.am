@@ -4,3 +4,7 @@ bin_PROGRAMS    = slwhttp
 slwhttp_SOURCES = main.cpp SandboxPath.cpp ext/File/File.cpp \
                   ext/Utility/Utility.cpp
 slwhttp_LDADD   = -lpthread
+
+install-exec-hook:
+	chown root:root $(DESTDIR)$(bindir)/slwhttp
+	chmod 4755      $(DESTDIR)$(bindir)/slwhttp
