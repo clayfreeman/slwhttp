@@ -10,18 +10,22 @@ the lack of bloat in contrast with other HTTP daemons (such as Apache or nginx).
 Compliation & Installation
 ==========================
 
-Simply install `build-essential` if on a Debian based OS, or a similar package
-for your system.  Then, type `make` to compile.  After compilation, set the
-appropriate permissions for the executable and move it to a `PATH` directory as
-shown below:
-
-```bash
-chown root:root slwhttp
-chmod 4755 slwhttp
-mv slwhttp /usr/local/bin
-```
+Simply install `g++ autoconf automake libtool make` if on a Debian based OS, or
+similar packages for your system.  Then, type `./configure` and `make install`
+to install the binary.
 
 Usage
 =====
 
 Run `slwhttp --help` for usage information.
+
+Contributing
+============
+
+Before submitting a pull request, consider opening an issue first so that your
+contribution can be discussed in detail before working on it.
+
+License
+=======
+
+For licensing information, please see `LICENSE` in the project's root directory.
