@@ -8,5 +8,5 @@ script: "sudo apt-get update &> /dev/null && \
          git submodule update --init && \
          ./autogen.sh && \
          ./configure && \
-         make install && \
+         sudo make install && \
          slwhttp --help"
