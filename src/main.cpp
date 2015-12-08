@@ -191,20 +191,17 @@ void begin() {
   char entry_buf[256] = {};
   if (getpwnam_r("nobody", &entry, entry_buf, sizeof(entry_buf), &tent) != 0)
     throw std::runtime_error{"could not find UID/GID for user \"nobody\" "};
+  if (setegid(entry.pw_gid) != 0 || seteuid(entry.pw_uid) != 0)
+    throw std::runtime_error{"failed to set eUID/eGID to user \"nobody\" "
+      "(not running as root?)"};
+
+  // Inform the user of privilege drop
+  debug("now running with reduced privileges of 'nobody' account");
 
   // Drop to a daemon process if not running in debug mode
   if (_debug != true)
     if (daemon(0, 0) != 0)
       debug("couldn't daemonize", true);
-
-  // Fully switch user/group ID to "nobody" after daemonizing (to preserve
-  // process ownership)
-  if (setgid(entry.pw_gid) != 0 || setuid(entry.pw_uid) != 0)
-    throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
-      "(not running as root?)"};
-
-  // Inform the user of privilege drop
-  debug("now running with reduced privileges of 'nobody' account");
 
   // Loop indefinitely to accept and process clients
   debug("begin accepting clients securely");
