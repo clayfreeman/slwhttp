@@ -1,6 +1,6 @@
 build:
   script: "apt-get update &> /dev/null && \
-           apt-get install -y build-essential git && \
+           apt-get install -y autoconf automake g++ git libtool && \
            git submodule update --init && \
            ./autogen.sh && \
            ./configure && \
