@@ -195,7 +195,13 @@ void begin() {
   char entry_buf[256] = {};
   if (getpwnam_r("nobody", &entry, entry_buf, sizeof(entry_buf), &tent) != 0)
     throw std::runtime_error{"could not find UID/GID for user \"nobody\" "};
-  if (setegid(entry.pw_gid) != 0 || seteuid(entry.pw_uid) != 0)
+  // Set the real GID/UID if running as root to prevent gaining root access
+  if (getgid() == 0 || getuid() == 0)
+    if (setgid(entry.pw_gid) != 0 || setuid(entry.pw_uid) != 0)
+      throw std::runtime_error{"failed to set UID/GID to user \"nobody\""};
+  // Otherwise, set only the effective GID/UID in order to preserve process
+  // ownership (to allow killing your own daemon)
+  else if (setegid(entry.pw_gid) != 0 || seteuid(entry.pw_uid) != 0)
     throw std::runtime_error{"failed to set eUID/eGID to user \"nobody\" "
       "(not running as root?)"};
 
