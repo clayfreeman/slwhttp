@@ -102,8 +102,7 @@ int main(int argc, const char* argv[]) {
     // Check if the given item is a valid option
     if (option == "--debug") {
       _debug = true;
-      debug("all further debug messages can be found in the syslog; this will "
-            "be helpful after becoming a daemon");
+      debug("all debug messages can be found in the syslog");
       debug("running in debug mode will reduce performance");
     }
     else if (option == "--help")
