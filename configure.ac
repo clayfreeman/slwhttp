@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([slwhttp], [1.0], [git@clayfreeman.com], 
+AC_INIT([slwhttp], [1.0], [git@clayfreeman.com], [slwhttp]
   [https://github.com/clayfreeman/slwhttp])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([src/main.cpp])
