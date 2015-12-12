@@ -240,10 +240,10 @@ void debug(const std::string& str, bool error) {
     std::unique_lock<std::mutex> lock{_mutex};
     if (error == true)
       // Print the given message with the appropriate error string
-      syslog(LOG_DEBUG, (str + ": %s").c_str(), strerror(errno));
+      syslog(LOG_DEBUG, "%s: %s", str.c_str(), strerror(errno));
     else
       // Print the given message
-      syslog(LOG_DEBUG, str.c_str());
+      syslog(LOG_DEBUG, "%s",     str.c_str());
   }
 }
 
