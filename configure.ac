@@ -62,6 +62,12 @@ AC_CHECK_HEADERS(
   []
 )
 AC_CHECK_HEADERS(
+  [syslog.h],
+  [],
+  [AC_MSG_ERROR([couldn't find or include syslog.h])],
+  []
+)
+AC_CHECK_HEADERS(
   [unistd.h],
   [],
   [AC_MSG_ERROR([couldn't find or include unistd.h])],

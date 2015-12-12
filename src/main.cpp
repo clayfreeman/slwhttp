@@ -36,6 +36,7 @@
 #include <sys/socket.h>   // for SOL_SOCKET, AF_INET, accept, etc
 #include <sys/time.h>     // for timeval
 #include <sys/types.h>    // for size_t, ssize_t
+#include <syslog.h>       // for openlog, syslog
 #include <thread>         // for thread
 #include <unistd.h>       // for close, lseek, fsync, read, etc
 #include <vector>         // for vector
@@ -46,13 +47,12 @@
 #include "include/SandboxPath.hpp"
 
 // Set the default index path (from htdocs directory)
-#define ERROR_TAG "[DEBUG] "
 #define INDEX     "/index.html"
 
 // Declare function prototypes
 void                     access_denied  (int fd, const std::string& message);
 void                     begin          ();
-inline void              debug          (const std::string& str,
+void                     debug          (const std::string& str,
                                          bool error = false);
 void                     dump_file      (int fd, const SandboxPath& path);
 void                     prepare_socket ();
@@ -88,6 +88,9 @@ int main(int argc, const char* argv[]) {
   for (int i = 1; i < argc; ++i)
     arguments.push_back(argv[i]);
 
+  // Open a connection to the system logger for messages
+  openlog("slwhttp", LOG_NDELAY | LOG_PERROR | LOG_PID, LOG_DAEMON);
+
   // Iterate over the options until no more arguments exist
   for (auto it = arguments.begin(); it != arguments.end(); ++it) {
     // Copy the argument from the arguments vector
@@ -99,6 +102,8 @@ int main(int argc, const char* argv[]) {
     // Check if the given item is a valid option
     if (option == "--debug") {
       _debug = true;
+      debug("all further debug messages can be found in the syslog; this will "
+            "be helpful after becoming a daemon");
       debug("running in debug mode will reduce performance");
     }
     else if (option == "--help")
@@ -183,6 +188,12 @@ void begin() {
   // Prepare the listening socket in order to accept connections
   prepare_socket();
 
+  // Drop to a daemon process
+  if (daemon(0, 0) != 0) {
+    debug("couldn't daemonize", true);
+    exit(EXIT_FAILURE);
+  }
+
   // Set the effective user/group ID to "nobody"
   struct passwd* tent = nullptr;
   struct passwd entry;
@@ -191,17 +202,12 @@ void begin() {
   char entry_buf[256] = {};
   if (getpwnam_r("nobody", &entry, entry_buf, sizeof(entry_buf), &tent) != 0)
     throw std::runtime_error{"could not find UID/GID for user \"nobody\" "};
-  if (setegid(entry.pw_gid) != 0 || seteuid(entry.pw_uid) != 0)
-    throw std::runtime_error{"failed to set eUID/eGID to user \"nobody\" "
+  if (setgid(entry.pw_gid) != 0 || setuid(entry.pw_uid) != 0)
+    throw std::runtime_error{"failed to set UID/GID to user \"nobody\" "
       "(not running as root?)"};
 
   // Inform the user of privilege drop
   debug("now running with reduced privileges of 'nobody' account");
-
-  // Drop to a daemon process if not running in debug mode
-  if (_debug != true)
-    if (daemon(0, 0) != 0)
-      debug("couldn't daemonize", true);
 
   // Loop indefinitely to accept and process clients
   debug("begin accepting clients securely");
@@ -228,16 +234,16 @@ void begin() {
  * @param  str    The input string
  * @param  error  Whether or not this call should print using perror(...)
  */
-inline void debug(const std::string& str, bool error) {
+void debug(const std::string& str, bool error) {
   // Check if debug mode is enabled
   if (_debug == true) {
     std::unique_lock<std::mutex> lock{_mutex};
     if (error == true)
-      // Print the message using perror(...)
-      perror((ERROR_TAG + str).c_str());
+      // Print the given message with the appropriate error string
+      syslog(LOG_DEBUG, (str + ": %s").c_str(), strerror(errno));
     else
       // Print the given message
-      std::cerr << ERROR_TAG << str << std::endl;
+      syslog(LOG_DEBUG, str.c_str());
   }
 }
 
