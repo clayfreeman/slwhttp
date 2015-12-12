@@ -30,3 +30,44 @@ License
 =======
 
 For licensing information, please see `LICENSE` in the project's root directory.
+
+Performance
+===========
+
+<pre>
+root@test:~/htdocs# ab -n 1024 -c 128 http://127.0.0.1/10M.test
+This is ApacheBench, Version 2.3 <$Revision: 1638069 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+...
+
+Concurrency Level:      128
+Time taken for tests:   3.132 seconds
+Complete requests:      1024
+Failed requests:        0
+Total transferred:      10737464320 bytes
+HTML transferred:       10737418240 bytes
+Requests per second:    326.91 [#/sec] (mean)
+Time per request:       391.544 [ms] (mean)
+Time per request:       3.059 [ms] (mean, across all concurrent requests)
+Transfer rate:          3347584.08 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    1   2.7      0      10
+Processing:    31  377 290.6    304    1186
+Waiting:        0    1   1.4      0       8
+Total:         31  378 292.0    304    1186
+
+Percentage of the requests served within a certain time (ms)
+50%    304
+66%    396
+75%    553
+80%    656
+90%    843
+95%    979
+98%   1021
+99%   1078
+100%   1186 (longest request)
+</pre>
