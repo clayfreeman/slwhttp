@@ -354,7 +354,8 @@ void print_help(bool should_exit) {
             << "  " << PACKAGE_NAME << " --help" << std::endl
             << "  " << PACKAGE_NAME << " --debug /var/www" << std::endl
             << std::endl
-            << PACKAGE_STRING << " online help: <" << PACKAGE_URL << ">"
+            << PACKAGE_NAME << "-" << PACKAGE_VERSION << " online help: <"
+            << PACKAGE_URL << ">"
             << std::endl;
   if (should_exit == true)
     exit(EXIT_SUCCESS);
