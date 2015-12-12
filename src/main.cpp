@@ -69,7 +69,6 @@ inline bool              valid          (int fd);
 bool         _debug = false;
 std::string _htdocs = "";
 std::mutex   _mutex = {};
-std::string   _path = "";
 int           _port = 80;
 int         _sockfd = -1;
 
@@ -83,13 +82,12 @@ int main(int argc, const char* argv[]) {
   signal(SIGPIPE, SIG_IGN);
 
   // Gather a vector of all arguments from argv[]
-  if (argc > 0) _path = argv[0];
   std::vector<std::string> arguments{};
   for (int i = 1; i < argc; ++i)
     arguments.push_back(argv[i]);
 
   // Open a connection to the system logger for messages
-  openlog("slwhttp", LOG_NDELAY | LOG_PERROR | LOG_PID, LOG_DAEMON);
+  openlog(PACKAGE_NAME, LOG_NDELAY | LOG_PERROR | LOG_PID, LOG_DAEMON);
 
   // Iterate over the options until no more arguments exist
   for (auto it = arguments.begin(); it != arguments.end(); ++it) {
@@ -343,18 +341,21 @@ void prepare_socket() {
  *                      completion of the function
  */
 void print_help(bool should_exit) {
-  std::cerr << "Usage: " << _path << " [OPTIONS] PATH" << std::endl
-            << "Serves static content from the given directory." << std::endl
-            << std::endl
+  std::cerr << "Usage: " << PACKAGE_NAME << " [OPTIONS] PATH" << std::endl
+            << "Serves static content (securely) from a given directory."
+            << std::endl << std::endl
             << "Command line options:" << std::endl
             << "  --debug    enable debug mode" << std::endl
             << "  --help     display this help and exit" << std::endl
             << "  --port     set the listen port (default: 80)" << std::endl
             << std::endl
             << "Examples:" << std::endl
-            << "  " << _path << " --port 8080 /var/www" << std::endl
-            << "  " << _path << " --help" << std::endl
-            << "  " << _path << " --debug /var/www" << std::endl;
+            << "  " << PACKAGE_NAME << " --port 8080 /var/www" << std::endl
+            << "  " << PACKAGE_NAME << " --help" << std::endl
+            << "  " << PACKAGE_NAME << " --debug /var/www" << std::endl
+            << std::endl
+            << PACKAGE_STRING << " online help: <" << PACKAGE_URL << ">"
+            << std::endl;
   if (should_exit == true)
     exit(EXIT_SUCCESS);
 }
