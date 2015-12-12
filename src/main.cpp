@@ -370,8 +370,10 @@ void process_request(int fd) {
       debug("request content (from fd: " + std::to_string(fd) + "):");
       bool first = true;
       for (const std::string& line : request)
-        if (first == true)
+        if (first == true) {
+          first = false;
           debug(" -> " + line);
+        }
         else
           debug("    " + line);
     }
