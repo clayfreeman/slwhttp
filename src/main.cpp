@@ -48,6 +48,7 @@
 
 // Set the default index path (from htdocs directory)
 #define INDEX     "/index.html"
+#define BUFSIZE   8192
 
 // Declare function prototypes
 void                     access_denied  (int fd, const std::string& message);
@@ -364,8 +365,8 @@ void print_help(bool should_exit) {
 /**
  * @brief Process Request
  *
- * Takes a file descriptor and a std::string request and processes the text as
- * HTTP protocol
+ * Takes a file descriptor and fetches a std::string request and processes the
+ * text as the HTTP protocol
  *
  * @param  fd  The file descriptor of the associated client
  */
@@ -448,10 +449,10 @@ std::vector<std::string> read_request(int fd) {
       // Determine if the client is readable with a delay of 10 ms
       if (ready(fd, 0, 10000)) {
         // Prepare a buffer for the incoming data
-        unsigned char buffer[8192] = {};
-        // Read up to (8K - 1) bytes from the file descriptor to ensure a null
-        // character at the end to prevent overflow
-        ssize_t data_read = read(fd, buffer, 8191);
+        unsigned char buffer[BUFSIZE] = {};
+        // Read up to (BUFSIZE - 1) bytes from the file descriptor to ensure a
+        // null character at the end to prevent overflow
+        ssize_t data_read = read(fd, buffer, BUFSIZE - 1);
         if (data_read > 0) {
           // NULL the character following the last byte that was read
           buffer[data_read] = 0;
