@@ -64,6 +64,7 @@ bool                     ready          (int fd, int sec = 0, int usec = 0);
 bool                     safe_sendfile  (int in_fd, int out_fd,
                                          int64_t data_length);
 bool                     safe_write     (int fd, const std::string& data);
+std::string&             urldecode      (std::string& url);
 inline bool              valid          (int fd);
 
 // Declare storage for global configuration state
@@ -406,7 +407,7 @@ void process_request(int fd) {
 
         try {
           // Determine absolute request path
-          _rpath = _htdocs + "/" + _rpath;
+          _rpath = _htdocs + "/" + urldecode(_rpath);
           debug("raw request for path: " + _rpath);
           SandboxPath path{_rpath};
           debug("sandboxed request for real path (from fd: " +
@@ -556,6 +557,38 @@ bool safe_write(int fd, const std::string& data) {
       data_sent += static_cast<size_t>(return_val);
   }
   return (data_sent == data_length);
+}
+
+/**
+ * Percent-decodes a given string using the format described in RFC 3986
+ *
+ * This method attempts to find and replace all patterns matching a percent
+ * character followed by two hexadecimal characters (ranging from '0' to '9' and
+ * 'A' to 'F') with an ASCII character represented by the hexadecimal value
+ *
+ * @param[out] url An input that might contain one or more percent-encoded
+ * 								 characters representing an ASCII value
+ *
+ * @return         The percent-decoded result containing its respective ASCII
+ *                 substitutions for percent-encoded characters
+ */
+std::string& urldecode(std::string& url) {
+  // Define a pattern that matches any percent character followed by two
+  // hexadecimal characters (as per RFC 3986)
+  const std::regex  pattern{"%([0-9A-F]{2})", std::regex_constants::icase};
+  // Create storage to store each pattern match
+  std::smatch match{};
+  // Continue to search until no further matches occur
+  while(std::regex_search(url, match, pattern))
+    { // Fetch a pointer to the hexadecimal string
+    const char* hex = match[1].str().c_str();
+    // Convert the hexadecimal string to an ASCII character
+    char dec = static_cast<char>(strtol(hex, nullptr, 16));
+    // Perform a substitution of the original match with the decoded character
+    // in the original URL
+    url.replace(match.position(0), match.length(0), 1, dec); }
+  // Return a reference to the original parameter
+  return url;
 }
 
 /**
