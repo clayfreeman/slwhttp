@@ -1,12 +1,25 @@
+# Enable C++ support
 language: cpp
-compiler: g++-4.9
+# Compiler selection
+compiler: g++
+# Require sudo for setuid
 sudo: required
-dist: trusty
-
-script: "sudo apt-get update &> /dev/null && \
-         sudo apt-get install -y autoconf automake g++ git libtool make && \
-         git submodule update --init && \
-         ./autogen.sh && \
-         ./configure && \
-         sudo make install && \
-         slwhttp --help"
+# Install extra packages
+addons:
+  apt:
+    sources:
+    # add PPAs with more up-to-date toolchains
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-precise-3.6
+    packages:
+    # install toolchains
+    - gcc-5
+    - g++-5
+    - clang-3.6
+# Build steps
+script:
+  - git submodule update --init
+  - ./autogen.sh
+  - ./configure
+  - sudo make install
+  - slwhttp --help
