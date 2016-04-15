@@ -65,7 +65,7 @@ bool                     ready          (int fd, int sec = 0, int usec = 0);
 bool                     safe_sendfile  (int in_fd, int out_fd,
                                          int64_t data_length);
 bool                     safe_write     (int fd, const std::string& data);
-std::string&             urldecode      (std::string& url);
+std::string&             urldecode      (std::string& url, bool extra = false);
 inline bool              valid          (int fd);
 
 // Declare storage for global configuration state
@@ -577,13 +577,18 @@ bool safe_write(int fd, const std::string& data) {
  * character followed by two hexadecimal characters (ranging from '0' to '9' and
  * 'A' to 'F') with an ASCII character represented by the hexadecimal value
  *
- * @param[out]  url  An input that might contain one or more percent-encoded
- *                   characters representing an ASCII value
+ * @param[out]  url    An input that might contain one or more percent-encoded
+ *                     characters representing an ASCII value
+ * @param       extra  Whether or not plus characters ('+') should be converted
+ *                     to space characters (' ') before standard decoding occurs
  *
- * @return           The percent-decoded result containing its respective ASCII
- *                   substitutions for percent-encoded characters
+ * @return             The percent-decoded result containing its respective
+ *                     ASCII substitutions for percent-encoded characters
  */
-std::string& urldecode(std::string& url) {
+std::string& urldecode(std::string& url, bool extra) {
+  // Optionally replace plus characters ('+') with a space character (' ')
+  // before decoding according to the standard
+  if (extra) std::regex_replace(url, std::regex{"+"}, " ");
   // Define a pattern that matches any percent character followed by two
   // hexadecimal characters (as per RFC 3986 § 2.1)
   const std::regex  pattern{"%([0-9A-F]{2})", std::regex_constants::icase};
