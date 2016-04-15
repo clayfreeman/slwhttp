@@ -571,7 +571,7 @@ bool safe_write(int fd, const std::string& data) {
 }
 
 /**
- * Percent-decodes a given string using the format described in RFC 3986
+ * Percent-decodes a given string using the format described in RFC 3986 § 2.1
  *
  * This method attempts to find and replace all patterns matching a percent
  * character followed by two hexadecimal characters (ranging from '0' to '9' and
@@ -585,7 +585,7 @@ bool safe_write(int fd, const std::string& data) {
  */
 std::string& urldecode(std::string& url) {
   // Define a pattern that matches any percent character followed by two
-  // hexadecimal characters (as per RFC 3986)
+  // hexadecimal characters (as per RFC 3986 § 2.1)
   const std::regex  pattern{"%([0-9A-F]{2})", std::regex_constants::icase};
   // Create storage to store each pattern match
   std::smatch match{};
