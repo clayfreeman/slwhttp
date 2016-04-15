@@ -591,7 +591,7 @@ std::string& urldecode(std::string& url, bool extra) {
   if (extra) std::regex_replace(url, std::regex{"+"}, " ");
   // Define a pattern that matches any percent character followed by two
   // hexadecimal characters (as per RFC 3986 § 2.1)
-  const std::regex  pattern{"%([0-9A-F]{2})", std::regex_constants::icase};
+  const std::regex  pattern{"\x25([0-9A-F]{2})", std::regex_constants::icase};
   // Create storage to store each pattern match
   std::smatch match{};
   // Continue to search until no further matches occur
