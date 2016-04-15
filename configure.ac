@@ -85,4 +85,16 @@ AC_TYPE_SSIZE_T
 # Checks for library functions.
 AC_CHECK_FUNCS([memset realpath select socket strdup])
 
+AC_ARG_ENABLE(
+  [setuid],
+  [AS_HELP_STRING(
+    [--disable-setuid],
+    [disable setuid feature]
+  )],
+  [:],
+  [enable_setuid=yes]
+)
+
+AM_CONDITIONAL([ENABLE_SETUID], [test "$enable_setuid" = "yes"])
+
 AC_OUTPUT([Makefile src/Makefile])

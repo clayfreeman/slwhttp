@@ -188,6 +188,7 @@ void begin() {
   // Prepare the listening socket in order to accept connections
   prepare_socket();
 
+#ifdef ENABLE_SETUID
   // Set the effective user/group ID to "nobody"
   struct passwd* tent = nullptr;
   struct passwd entry;
@@ -209,6 +210,7 @@ void begin() {
 
   // Inform the user of privilege drop
   debug("now running with reduced privileges of 'nobody' account");
+#endif
 
   // Drop to a daemon process
   if (daemon(0, 0) != 0) {
