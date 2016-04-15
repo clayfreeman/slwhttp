@@ -1,8 +1,9 @@
-# To-Do List
+# To-Do List (in order)
 
 * Separate some logic into separate files/classes.
+* Switch to custom socket/connection management classes.
 * Rewrite inline documentation to match `urldecode`'s format.
-* Profile performance on a per-request basis to identify bottlenecks.
 * Consider adding `Range` header support to allow partial downloads.
+* Profile performance on a per-request basis to identify bottlenecks.
 * Rewrite `README.md` to contain updated information (when other items on this
   list completed).
