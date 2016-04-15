@@ -510,10 +510,15 @@ bool ready(int fd, int sec, int usec) {
 }
 
 /**
- * @brief Safe Sendfile
- *
  * Safely copies the contents of the given input file descriptor to the given
- * output file descriptor (up to 8 exbibytes)
+ * output file descriptor
+ *
+ * The provided input file descriptor is accessed read-only for writing to the
+ * provided output file descriptor using `sendfile64` in a loop until the
+ * requested data length has been written (except in the case of an error)
+ *
+ * This function guarantees a supported size of 8EiB minus 1 byte as per the
+ * standard implementation for `int64_t` (using multiple calls to `sendfile64`)
  *
  * @param  in_fd        The file descriptor to which the data will be written
  * @param  out_fd       The data that should be written
@@ -532,11 +537,16 @@ bool safe_sendfile(int in_fd, int out_fd, int64_t data_length) {
 }
 
 /**
- * @brief Safe Write
+ * Safely writes the given data to a file descriptor
  *
- * Safely writes the given data to a file descriptor.  This function guarantees
- * a supported size of 64KB minus 1 byte as per the standard for size_t, but
- * probably supports a greater size depending on your system
+ * The provided data is accessed read-only for writing to the provided file
+ * descriptor using networking best practices such as looping until all data is
+ * written (except in the case of an error) and using `unsigned char` to
+ * correctly represent binary data
+ *
+ * This function guarantees a supported size of 64KiB minus 1 byte as per the
+ * standard for `size_t`, but probably supports a greater size depending on your
+ * operating system's implementation
  *
  * @param  fd    The file descriptor to which the data will be written
  * @param  data  The data that should be written
@@ -567,11 +577,11 @@ bool safe_write(int fd, const std::string& data) {
  * character followed by two hexadecimal characters (ranging from '0' to '9' and
  * 'A' to 'F') with an ASCII character represented by the hexadecimal value
  *
- * @param[out] url An input that might contain one or more percent-encoded
- * 								 characters representing an ASCII value
+ * @param[out]  url  An input that might contain one or more percent-encoded
+ * 								   characters representing an ASCII value
  *
- * @return         The percent-decoded result containing its respective ASCII
- *                 substitutions for percent-encoded characters
+ * @return           The percent-decoded result containing its respective ASCII
+ *                   substitutions for percent-encoded characters
  */
 std::string& urldecode(std::string& url) {
   // Define a pattern that matches any percent character followed by two
@@ -593,13 +603,17 @@ std::string& urldecode(std::string& url) {
 }
 
 /**
- * @brief Valid
+ * Determines if a file descriptor is considered valid for read, write, or other
+ * input/output operations
  *
- * Determines if a specific file descriptor is valid
+ * A file descriptor is considered invalid if a call requesting its flags fails
+ * with the return value of `-1` or `errno` is set to `EBADF` (the provided
+ * argument is not an open file descriptor). If neither case is satisfied, the
+ * file descriptor is considered valid
  *
- * @param  fd  The file descriptor to test
+ * @param  fd  File descriptor that should be verified
  *
- * @return     true if valid, otherwise false
+ * @return     `true` if the file descriptor is valid, `false` otherwise
  */
 inline bool valid(int fd) {
   return (fcntl(fd, F_GETFD) != -1 || errno != EBADF);
