@@ -13,7 +13,7 @@ Compliation & Installation
 Simply install `g++ autoconf automake libtool make` if on a Debian based OS, or
 similar packages for your system.  Then, type `sh autogen.sh` to generate the
 configuration script and Makefiles.  After that, run `./configure` and
-`make install` to install the binary.
+`sudo make install` to install the binary (`sudo` required for setuid bit).
 
 Usage
 =====
