@@ -578,7 +578,7 @@ bool safe_write(int fd, const std::string& data) {
  * 'A' to 'F') with an ASCII character represented by the hexadecimal value
  *
  * @param[out]  url  An input that might contain one or more percent-encoded
- * 								   characters representing an ASCII value
+ *                   characters representing an ASCII value
  *
  * @return           The percent-decoded result containing its respective ASCII
  *                   substitutions for percent-encoded characters
