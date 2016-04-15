@@ -1,7 +1,7 @@
 # Enable C++ support
 language: cpp
 # Compiler selection
-compiler: g++
+compiler: g++-5
 # Require sudo for setuid
 sudo: required
 # Require trusty for decent compiling environment
@@ -12,11 +12,10 @@ before_install:
   - sudo apt-get update -qq
 install:
   - sudo apt-get install -qq g++-5
-  - export CXX="g++-5"
 # Build steps
 script:
   - pwd
   - ./autogen.sh
-  - ./configure
+  - ./configure CXX="g++-5"
   - sudo make install
   - slwhttp --help
