@@ -13,12 +13,15 @@ addons:
     - llvm-toolchain-precise-3.6
     packages:
     # install toolchains
+    - autoconf
+    - automake
     - gcc-5
     - g++-5
-    - clang-3.6
+    - libtool
+    - make
 # Build steps
 script:
-  - git submodule update --init
+  - pwd
   - ./autogen.sh
   - ./configure
   - sudo make install
