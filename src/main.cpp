@@ -28,6 +28,7 @@
 #include <mutex>          // for mutex, unique_lock
 #include <netinet/in.h>   // for sockaddr_in, htons, INADDR_ANY, etc
 #include <pwd.h>          // for getpwnam_r, passwd
+#include <regex>          // for regex, regex_search, smatch
 #include <signal.h>       // for signal, SIGPIPE, SIG_IGN
 #include <stdexcept>      // for exception, runtime_error
 #include <string>         // for string, allocator, operator+, etc
